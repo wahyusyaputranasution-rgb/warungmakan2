@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manajemen Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Akun Admin</h3>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Admin</button>
+    </div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Username</th><th>Nama Lengkap</th><th>Role</th><th>Status</th><th>Dibuat</th><th></th></tr></thead>
+        <tbody id="admin-body"><tr><td colspan="6">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-form">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-header"><h3 id="modal-title">Tambah Admin</h3><button class="modal-close" data-close-modal="modal-form">&times;</button></div>
+    <form id="admin-form">
+      <input type="hidden" id="admin-id">
+      <div class="form-group"><label>Username *</label><input type="text" id="admin-username" class="form-control" required maxlength="50"></div>
+      <div class="form-group"><label>Nama Lengkap *</label><input type="text" id="admin-nama" class="form-control" required maxlength="100"></div>
+      <div class="form-group"><label id="label-password">Password * (min. 6 karakter)</label><input type="password" id="admin-password" class="form-control" minlength="6"></div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="admin-role" class="form-control">
+          <option value="admin">Admin</option>
+          <option value="super_admin">Super Admin</option>
+        </select>
+      </div>
+      <div class="form-group" id="status-wrap" style="display:none">
+        <label class="form-check"><input type="checkbox" id="admin-aktif" checked> Akun Aktif</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block mt-2" id="btn-save">Simpan</button>
+    </form>
+  </div>
+</div>
+
+<script src="../assets/js/admin-api.js"></script>
+<script src="../assets/js/admin-layout.js"></script>
+<script>
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "../index.html"; return; }
+  renderAdminLayout("admin", "Manajemen Admin");
+  hideLoadingScreen();
+  loadAdmin();
+})();
+
+async function loadAdmin() {
+  const tbody = document.getElementById("admin-body");
+  tbody.innerHTML = `<tr><td colspan="6">Memuat...</td></tr>`;
+  try {
+    const list = await AdminApi.listAdmins();
+    const me = getAdminInfo();
+    tbody.innerHTML = list.map((a) => `
+      <tr>
+        <td class="fw-bold">${a.username}</td>
+        <td>${a.nama_lengkap}</td>
+        <td><span class="pill ${a.role === "super_admin" ? "blue" : "gray"}">${a.role === "super_admin" ? "Super Admin" : "Admin"}</span></td>
+        <td><span class="pill ${a.aktif ? "green" : "red"}">${a.aktif ? "Aktif" : "Nonaktif"}</span></td>
+        <td>${formatTanggalSingkat(a.created_at)}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-sm btn-outline" onclick='openEditModal(${JSON.stringify(a).replace(/'/g, "&apos;")})'>Edit</button>
+            ${me && me.id !== a.id ? `<button class="btn btn-sm btn-danger" onclick="deleteAdmin(${a.id})">Hapus</button>` : ""}
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-muted">${err.message === "Hanya super admin yang dapat mengakses fitur ini." ? err.message : err.message}</td></tr>`;
+  }
+}
+
+function resetForm() {
+  document.getElementById("admin-form").reset();
+  document.getElementById("admin-id").value = "";
+  document.getElementById("status-wrap").style.display = "none";
+  document.getElementById("label-password").textContent = "Password * (min. 6 karakter)";
+  document.getElementById("admin-password").required = true;
+}
+function openCreateModal() { resetForm(); document.getElementById("modal-title").textContent = "Tambah Admin"; openModal("modal-form"); }
+function openEditModal(a) {
+  resetForm();
+  document.getElementById("modal-title").textContent = "Edit Admin";
+  document.getElementById("admin-id").value = a.id;
+  document.getElementById("admin-username").value = a.username;
+  document.getElementById("admin-username").disabled = true;
+  document.getElementById("admin-nama").value = a.nama_lengkap;
+  document.getElementById("admin-role").value = a.role;
+  document.getElementById("admin-aktif").checked = !!a.aktif;
+  document.getElementById("status-wrap").style.display = "block";
+  document.getElementById("label-password").textContent = "Password Baru (kosongkan jika tidak diubah)";
+  document.getElementById("admin-password").required = false;
+  openModal("modal-form");
+}
+
+document.getElementById("admin-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("admin-id").value;
+  const password = document.getElementById("admin-password").value;
+
+  try {
+    if (id) {
+      const payload = {
+        nama_lengkap: document.getElementById("admin-nama").value.trim(),
+        role: document.getElementById("admin-role").value,
+        aktif: document.getElementById("admin-aktif").checked,
+      };
+      if (password) payload.password = password;
+      await AdminApi.updateAdmin(id, payload);
+    } else {
+      const payload = {
+        username: document.getElementById("admin-username").value.trim(),
+        nama_lengkap: document.getElementById("admin-nama").value.trim(),
+        password: password,
+        role: document.getElementById("admin-role").value,
+      };
+      await AdminApi.createAdmin(payload);
+    }
+    showToast("Admin berhasil disimpan.", "success");
+    closeModal("modal-form");
+    document.getElementById("admin-username").disabled = false;
+    loadAdmin();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+async function deleteAdmin(id) {
+  if (!confirmAction("Yakin ingin menghapus admin ini?")) return;
+  try {
+    await AdminApi.deleteAdmin(id);
+    showToast("Admin dihapus.", "success");
+    loadAdmin();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+</script>
+</body>
+</html>

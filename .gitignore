@@ -1,0 +1,29 @@
+# ==========================================================
+# GITIGNORE - Warung Makan
+# ==========================================================
+
+# Dependensi & cache
+node_modules/
+.npm/
+
+# Wrangler
+.wrangler/
+.dev.vars
+
+# File sistem operasi
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Log
+*.log
+npm-debug.log*
+
+# Environment/secret lokal (jika Anda buat file terpisah untuk secret asli)
+.env
+.env.local
+secrets.toml

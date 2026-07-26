@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pelanggan | Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Daftar Pelanggan</h3>
+      <input type="text" id="filter-search" class="form-control" placeholder="Cari nama/WhatsApp..." style="max-width:240px">
+    </div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Nama</th><th>WhatsApp</th><th>Alamat Terakhir</th><th>Total Pesanan</th><th>Total Belanja</th></tr></thead>
+        <tbody id="pelanggan-body"><tr><td colspan="5">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<script src="../assets/js/admin-api.js"></script>
+<script src="../assets/js/admin-layout.js"></script>
+<script>
+let currentPage = 1;
+
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "../index.html"; return; }
+  renderAdminLayout("pelanggan", "Data Pelanggan");
+  hideLoadingScreen();
+  loadPelanggan();
+
+  let debounce;
+  document.getElementById("filter-search").addEventListener("input", () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => { currentPage = 1; loadPelanggan(); }, 400);
+  });
+})();
+
+async function loadPelanggan() {
+  const tbody = document.getElementById("pelanggan-body");
+  tbody.innerHTML = `<tr><td colspan="5">Memuat...</td></tr>`;
+  try {
+    const search = document.getElementById("filter-search").value.trim();
+    const result = await AdminApi.listCustomers({ page: currentPage, per_page: 15, ...(search ? { q: search } : {}) });
+    if (!result.items.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-muted text-center">Belum ada data pelanggan.</td></tr>`;
+      document.getElementById("pagination").innerHTML = "";
+      return;
+    }
+    tbody.innerHTML = result.items.map((p) => `
+      <tr>
+        <td class="fw-bold">${p.nama}</td>
+        <td><a href="https://wa.me/${p.whatsapp.replace(/\D/g,"")}" target="_blank">${p.whatsapp}</a></td>
+        <td>${p.alamat_terakhir || "-"}</td>
+        <td>${p.total_pesanan}</td>
+        <td>${formatRupiah(p.total_belanja)}</td>
+      </tr>
+    `).join("");
+    renderPagination(result.page, result.total_pages);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${err.message}</td></tr>`;
+  }
+}
+
+function renderPagination(page, totalPages) {
+  const el = document.getElementById("pagination");
+  if (totalPages <= 1) { el.innerHTML = ""; return; }
+  let html = `<button ${page <= 1 ? "disabled" : ""} onclick="goPage(${page - 1})">‹</button>`;
+  for (let i = 1; i <= totalPages; i++) html += `<button class="${i === page ? "active" : ""}" onclick="goPage(${i})">${i}</button>`;
+  html += `<button ${page >= totalPages ? "disabled" : ""} onclick="goPage(${page + 1})">›</button>`;
+  el.innerHTML = html;
+}
+function goPage(p) { currentPage = p; loadPelanggan(); }
+</script>
+</body>
+</html>

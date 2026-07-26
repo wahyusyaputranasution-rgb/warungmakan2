@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status Pesanan</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="brand">
+      <img src="assets/images/logo-placeholder.svg" class="site-logo" alt="Logo">
+      <span class="site-nama-warung">Warung Makan</span>
+    </a>
+    <div style="width:40px"></div>
+  </div>
+  <nav class="main-nav">
+    <a href="index.html">Home</a>
+    <a href="menu.html">Menu</a>
+    <a href="status-pesanan.html" class="active">Status Pesanan</a>
+    <a href="tentang.html">Tentang</a>
+    <a href="kontak.html">Kontak</a>
+  </nav>
+</header>
+
+<section class="section">
+  <div id="search-box">
+    <h2 style="font-size:1.1rem;margin-bottom:12px">Lacak Pesanan Anda</h2>
+    <div class="flex gap-2">
+      <input type="text" id="nomor-input" class="form-control" placeholder="Masukkan nomor pesanan, contoh: WM-2026-000001">
+      <button id="btn-lacak" class="btn btn-primary">Lacak</button>
+    </div>
+    <p class="form-hint" id="search-error"></p>
+  </div>
+</section>
+
+<section class="section" id="hasil-section" style="display:none">
+  <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);margin-bottom:16px">
+    <div class="flex justify-between items-center">
+      <div>
+        <p class="text-muted" style="font-size:0.75rem">Nomor Pesanan</p>
+        <p class="fw-bold" id="hasil-nomor" style="font-size:1.05rem"></p>
+      </div>
+      <span class="badge" id="hasil-status-badge" style="background:var(--color-primary);padding:6px 12px;font-size:0.72rem"></span>
+    </div>
+    <p class="text-muted mt-2" style="font-size:0.78rem" id="hasil-tanggal"></p>
+  </div>
+
+  <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);margin-bottom:16px">
+    <h3 style="font-size:0.92rem;margin-bottom:14px">Progres Pesanan</h3>
+    <div class="stepper" id="stepper"></div>
+  </div>
+
+  <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);margin-bottom:16px">
+    <h3 style="font-size:0.92rem;margin-bottom:10px">Lokasi Pengiriman</h3>
+    <div id="map-detail"></div>
+    <p class="text-muted mt-2" style="font-size:0.78rem" id="hasil-alamat"></p>
+    <p class="text-muted" style="font-size:0.78rem" id="hasil-jarak"></p>
+  </div>
+
+  <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);margin-bottom:16px">
+    <h3 style="font-size:0.92rem;margin-bottom:10px">Item Pesanan</h3>
+    <div id="hasil-items"></div>
+    <div class="summary-row"><span>Subtotal</span><span id="hasil-subtotal"></span></div>
+    <div class="summary-row"><span>Ongkos Kirim</span><span id="hasil-ongkir"></span></div>
+    <div class="summary-row" id="hasil-diskon-row" style="display:none"><span>Diskon</span><span id="hasil-diskon"></span></div>
+    <div class="summary-row total"><span>Total</span><span id="hasil-total"></span></div>
+  </div>
+
+  <a id="btn-hubungi-warung" href="#" target="_blank" class="btn btn-outline btn-block">
+    💬 Hubungi Warung via WhatsApp
+  </a>
+</section>
+
+<footer class="site-footer">
+  <p class="footer-bottom">&copy; <span id="tahun-sekarang"></span> <span class="site-nama-warung">Warung Makan</span>. Semua hak cipta dilindungi.</p>
+</footer>
+
+<nav class="bottom-nav">
+  <a href="index.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Home</a>
+  <a href="menu.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3zM3 10h18v11H3z"/></svg>Menu</a>
+  <a href="keranjang.html" style="position:relative"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>Keranjang<span class="cart-badge" style="display:none">0</span></a>
+  <a href="status-pesanan.html" class="active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Status</a>
+  <a href="kontak.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>Kontak</a>
+</nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/cart.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+document.getElementById("tahun-sekarang").textContent = new Date().getFullYear();
+
+const STATUS_LABELS = {
+  menunggu: "Menunggu Konfirmasi",
+  diproses: "Diproses",
+  dimasak: "Sedang Dimasak",
+  siap_diantar: "Siap Diantar",
+  diantar: "Sedang Diantar",
+  selesai: "Selesai",
+  dibatalkan: "Dibatalkan",
+};
+const STATUS_ORDER = ["menunggu", "diproses", "dimasak", "siap_diantar", "diantar", "selesai"];
+const STATUS_DESC = {
+  menunggu: "Pesanan Anda sedang menunggu konfirmasi dari warung.",
+  diproses: "Pesanan Anda sedang diproses.",
+  dimasak: "Masakan Anda sedang disiapkan di dapur.",
+  siap_diantar: "Pesanan siap dan menunggu kurir.",
+  diantar: "Kurir sedang dalam perjalanan mengantar pesanan Anda.",
+  selesai: "Pesanan telah selesai. Selamat menikmati!",
+};
+
+function renderStepper(currentStatus) {
+  const el = document.getElementById("stepper");
+  if (currentStatus === "dibatalkan") {
+    el.innerHTML = `<div class="step current"><div class="step-dot">✕</div><div class="step-body"><h4>Pesanan Dibatalkan</h4><p>Pesanan ini telah dibatalkan.</p></div></div>`;
+    return;
+  }
+  const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+  el.innerHTML = STATUS_ORDER.map((status, i) => {
+    const done = i < currentIndex;
+    const current = i === currentIndex;
+    return `
+      <div class="step ${done ? "done" : ""} ${current ? "current" : ""}">
+        <div class="step-dot">${done ? "✓" : i + 1}</div>
+        <div class="step-body">
+          <h4>${STATUS_LABELS[status]}</h4>
+          <p>${current ? STATUS_DESC[status] : ""}</p>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function lacakPesanan(nomor) {
+  const errorEl = document.getElementById("search-error");
+  const hasilSection = document.getElementById("hasil-section");
+  errorEl.textContent = "";
+
+  try {
+    const data = await Api.trackOrder(nomor);
+    const { pesanan, items, warung } = data;
+
+    hasilSection.style.display = "block";
+    document.getElementById("hasil-nomor").textContent = pesanan.nomor_pesanan;
+    document.getElementById("hasil-tanggal").textContent = formatTanggal(pesanan.created_at);
+    document.getElementById("hasil-status-badge").textContent = STATUS_LABELS[pesanan.status] || pesanan.status;
+    document.getElementById("hasil-status-badge").style.background =
+      pesanan.status === "dibatalkan" ? "var(--color-danger)" : pesanan.status === "selesai" ? "var(--color-success)" : "var(--color-primary)";
+
+    renderStepper(pesanan.status);
+
+    document.getElementById("hasil-alamat").textContent = `${pesanan.alamat}${pesanan.patokan ? " (Patokan: " + pesanan.patokan + ")" : ""}`;
+    document.getElementById("hasil-jarak").textContent = `Jarak dari warung: ${pesanan.jarak_km} km`;
+
+    document.getElementById("hasil-items").innerHTML = items.map((item) => `
+      <div class="flex justify-between" style="padding:6px 0;font-size:0.85rem">
+        <span>${item.jumlah}x ${item.nama_produk}</span>
+        <span>${formatRupiah(item.subtotal)}</span>
+      </div>
+    `).join("");
+
+    document.getElementById("hasil-subtotal").textContent = formatRupiah(pesanan.subtotal);
+    document.getElementById("hasil-ongkir").textContent = formatRupiah(pesanan.ongkir);
+    if (pesanan.diskon_voucher > 0) {
+      document.getElementById("hasil-diskon-row").style.display = "flex";
+      document.getElementById("hasil-diskon").textContent = "-" + formatRupiah(pesanan.diskon_voucher);
+    }
+    document.getElementById("hasil-total").textContent = formatRupiah(pesanan.total);
+
+    if (warung && warung.whatsapp) {
+      document.getElementById("btn-hubungi-warung").href = `https://wa.me/${warung.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent("Halo, saya ingin menanyakan pesanan " + pesanan.nomor_pesanan)}`;
+    }
+
+    if (pesanan.latitude && pesanan.longitude) {
+      const map = L.map("map-detail").setView([pesanan.latitude, pesanan.longitude], 14);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(map);
+      L.marker([pesanan.latitude, pesanan.longitude]).addTo(map).bindPopup("Lokasi Pengiriman");
+      if (warung && warung.latitude) {
+        const warungIcon = L.divIcon({ html: "🏠", iconSize: [24, 24], className: "" });
+        L.marker([warung.latitude, warung.longitude], { icon: warungIcon }).addTo(map).bindPopup("Warung");
+        L.polyline([[pesanan.latitude, pesanan.longitude], [warung.latitude, warung.longitude]], { color: "#ff6b35", dashArray: "6,6" }).addTo(map);
+        map.fitBounds([[pesanan.latitude, pesanan.longitude], [warung.latitude, warung.longitude]], { padding: [30, 30] });
+      }
+      setTimeout(() => map.invalidateSize(), 200);
+    }
+
+    hasilSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (err) {
+    hasilSection.style.display = "none";
+    errorEl.textContent = err.message;
+    errorEl.className = "form-error";
+  }
+}
+
+document.getElementById("btn-lacak").addEventListener("click", () => {
+  const nomor = document.getElementById("nomor-input").value.trim();
+  if (!nomor) return;
+  lacakPesanan(nomor);
+});
+document.getElementById("nomor-input").addEventListener("keypress", (e) => {
+  if (e.key === "Enter") document.getElementById("btn-lacak").click();
+});
+
+const urlParams = new URLSearchParams(window.location.search);
+const nomorFromUrl = urlParams.get("nomor");
+if (nomorFromUrl) {
+  document.getElementById("nomor-input").value = nomorFromUrl;
+  lacakPesanan(nomorFromUrl);
+  if (urlParams.get("baru") === "1") {
+    showToast("Pesanan berhasil dibuat! Terima kasih.", "success", 4000);
+  }
+}
+</script>
+</body>
+</html>

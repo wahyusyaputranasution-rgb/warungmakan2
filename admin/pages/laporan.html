@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laporan | Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+  <div class="panel">
+    <div class="filter-bar" style="align-items:flex-end">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Filter Periode</label>
+        <select id="filter-periode" class="form-control">
+          <option value="harian">Hari Ini</option>
+          <option value="mingguan">7 Hari Terakhir</option>
+          <option value="bulanan">Bulan Ini</option>
+          <option value="custom">Kustom</option>
+        </select>
+      </div>
+      <div class="form-group" id="custom-date-wrap" style="display:none;margin-bottom:0">
+        <label>Dari</label>
+        <input type="date" id="custom-start" class="form-control">
+      </div>
+      <div class="form-group" id="custom-date-wrap2" style="display:none;margin-bottom:0">
+        <label>Sampai</label>
+        <input type="date" id="custom-end" class="form-control">
+      </div>
+      <button class="btn btn-outline" id="btn-filter">Terapkan</button>
+      <button class="btn btn-primary" id="btn-export">⬇ Export CSV</button>
+    </div>
+  </div>
+
+  <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat-card"><div class="stat-value" id="sum-total-pesanan">0</div><div class="stat-label">Total Pesanan</div></div>
+    <div class="stat-card"><div class="stat-value" id="sum-total-pendapatan">Rp0</div><div class="stat-label">Total Pendapatan</div></div>
+    <div class="stat-card"><div class="stat-value" id="sum-total-batal">0</div><div class="stat-label">Pesanan Dibatalkan</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h3>Detail Transaksi</h3></div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Nomor</th><th>Tanggal</th><th>Nama</th><th>Subtotal</th><th>Ongkir</th><th>Diskon</th><th>Total</th><th>Status</th></tr></thead>
+        <tbody id="laporan-body"><tr><td colspan="8">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/admin-api.js"></script>
+<script src="../assets/js/admin-layout.js"></script>
+<script>
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "../index.html"; return; }
+  renderAdminLayout("laporan", "Laporan Penjualan");
+  hideLoadingScreen();
+  loadLaporan();
+
+  document.getElementById("filter-periode").addEventListener("change", (e) => {
+    const isCustom = e.target.value === "custom";
+    document.getElementById("custom-date-wrap").style.display = isCustom ? "block" : "none";
+    document.getElementById("custom-date-wrap2").style.display = isCustom ? "block" : "none";
+  });
+  document.getElementById("btn-filter").addEventListener("click", loadLaporan);
+  document.getElementById("btn-export").addEventListener("click", exportCsv);
+})();
+
+function getFilterParams() {
+  const filter = document.getElementById("filter-periode").value;
+  const params = { filter };
+  if (filter === "custom") {
+    params.start_date = document.getElementById("custom-start").value;
+    params.end_date = document.getElementById("custom-end").value;
+  }
+  return params;
+}
+
+async function loadLaporan() {
+  const tbody = document.getElementById("laporan-body");
+  tbody.innerHTML = `<tr><td colspan="8">Memuat...</td></tr>`;
+  try {
+    const result = await AdminApi.getReports(getFilterParams());
+    document.getElementById("sum-total-pesanan").textContent = result.summary.total_pesanan;
+    document.getElementById("sum-total-pendapatan").textContent = formatRupiah(result.summary.total_pendapatan);
+    document.getElementById("sum-total-batal").textContent = result.summary.total_dibatalkan;
+
+    if (!result.items.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-muted text-center">Tidak ada transaksi pada periode ini.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = result.items.map((r) => `
+      <tr>
+        <td class="fw-bold">${r.nomor_pesanan}</td>
+        <td>${formatTanggalSingkat(r.created_at)}</td>
+        <td>${r.nama}</td>
+        <td>${formatRupiah(r.subtotal)}</td>
+        <td>${formatRupiah(r.ongkir)}</td>
+        <td>${formatRupiah(r.diskon_voucher)}</td>
+        <td class="fw-bold">${formatRupiah(r.total)}</td>
+        <td><span class="pill ${r.status === "dibatalkan" ? "red" : r.status === "selesai" ? "green" : "blue"}">${r.status}</span></td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${err.message}</td></tr>`;
+  }
+}
+
+async function exportCsv() {
+  try {
+    const params = { ...getFilterParams(), format: "csv" };
+    const response = await adminApiRequest(`/api/admin/reports?${new URLSearchParams(params)}`);
+    // Jika respons berupa Response mentah (CSV), unduh langsung
+    if (response instanceof Response) {
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `laporan-${params.filter}-${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+    showToast("Laporan CSV berhasil diunduh.", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+</script>
+</body>
+</html>

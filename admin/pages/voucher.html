@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voucher | Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Daftar Voucher</h3>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Voucher</button>
+    </div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Kode</th><th>Tipe</th><th>Nilai</th><th>Min. Belanja</th><th>Kuota</th><th>Kadaluarsa</th><th>Status</th><th></th></tr></thead>
+        <tbody id="voucher-body"><tr><td colspan="8">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-form">
+  <div class="modal-box">
+    <div class="modal-header"><h3 id="modal-title">Tambah Voucher</h3><button class="modal-close" data-close-modal="modal-form">&times;</button></div>
+    <form id="voucher-form">
+      <input type="hidden" id="voucher-id">
+      <div class="form-group"><label>Kode Voucher *</label><input type="text" id="voucher-kode" class="form-control" required maxlength="50" style="text-transform:uppercase" placeholder="Contoh: HEMAT10"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tipe Diskon *</label>
+          <select id="voucher-tipe" class="form-control">
+            <option value="persentase">Persentase (%)</option>
+            <option value="nominal">Nominal (Rp)</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Nilai *</label><input type="number" id="voucher-nilai" class="form-control" required min="1"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Minimal Belanja (Rp)</label><input type="number" id="voucher-minimal" class="form-control" value="0" min="0"></div>
+        <div class="form-group"><label>Maks. Potongan (Rp, khusus %)</label><input type="number" id="voucher-maks-potongan" class="form-control" value="0" min="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Kuota (0 = tak terbatas)</label><input type="number" id="voucher-kuota" class="form-control" value="0" min="0"></div>
+        <div class="form-group"><label>Tanggal Kadaluarsa *</label><input type="date" id="voucher-kadaluarsa" class="form-control" required></div>
+      </div>
+      <div class="form-group"><label class="form-check"><input type="checkbox" id="voucher-aktif" checked> Status Aktif</label></div>
+      <button type="submit" class="btn btn-primary btn-block mt-2" id="btn-save">Simpan</button>
+    </form>
+  </div>
+</div>
+
+<script src="../assets/js/admin-api.js"></script>
+<script src="../assets/js/admin-layout.js"></script>
+<script>
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "../index.html"; return; }
+  renderAdminLayout("voucher", "Kelola Voucher");
+  hideLoadingScreen();
+  loadVoucher();
+})();
+
+async function loadVoucher() {
+  const tbody = document.getElementById("voucher-body");
+  tbody.innerHTML = `<tr><td colspan="8">Memuat...</td></tr>`;
+  try {
+    const list = await AdminApi.listVouchers();
+    if (!list.length) { tbody.innerHTML = `<tr><td colspan="8" class="text-muted text-center">Belum ada voucher.</td></tr>`; return; }
+    tbody.innerHTML = list.map((v) => `
+      <tr>
+        <td class="fw-bold">${v.kode}</td>
+        <td>${v.tipe === "persentase" ? "Persentase" : "Nominal"}</td>
+        <td>${v.tipe === "persentase" ? v.nilai + "%" : formatRupiah(v.nilai)}</td>
+        <td>${formatRupiah(v.minimal_belanja)}</td>
+        <td>${v.terpakai} / ${v.kuota === 0 ? "∞" : v.kuota}</td>
+        <td>${v.tanggal_kadaluarsa}</td>
+        <td><span class="pill ${v.aktif ? "green" : "gray"}">${v.aktif ? "Aktif" : "Nonaktif"}</span></td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-sm btn-outline" onclick='openEditModal(${JSON.stringify(v).replace(/'/g, "&apos;")})'>Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteVoucher(${v.id})">Hapus</button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${err.message}</td></tr>`;
+  }
+}
+
+function resetForm() { document.getElementById("voucher-form").reset(); document.getElementById("voucher-id").value = ""; document.getElementById("voucher-aktif").checked = true; }
+function openCreateModal() { resetForm(); document.getElementById("modal-title").textContent = "Tambah Voucher"; openModal("modal-form"); }
+function openEditModal(v) {
+  resetForm();
+  document.getElementById("modal-title").textContent = "Edit Voucher";
+  document.getElementById("voucher-id").value = v.id;
+  document.getElementById("voucher-kode").value = v.kode;
+  document.getElementById("voucher-tipe").value = v.tipe;
+  document.getElementById("voucher-nilai").value = v.nilai;
+  document.getElementById("voucher-minimal").value = v.minimal_belanja;
+  document.getElementById("voucher-maks-potongan").value = v.maksimal_potongan;
+  document.getElementById("voucher-kuota").value = v.kuota;
+  document.getElementById("voucher-kadaluarsa").value = v.tanggal_kadaluarsa;
+  document.getElementById("voucher-aktif").checked = !!v.aktif;
+  openModal("modal-form");
+}
+
+document.getElementById("voucher-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("voucher-id").value;
+  const payload = {
+    kode: document.getElementById("voucher-kode").value.trim().toUpperCase(),
+    tipe: document.getElementById("voucher-tipe").value,
+    nilai: parseInt(document.getElementById("voucher-nilai").value) || 0,
+    minimal_belanja: parseInt(document.getElementById("voucher-minimal").value) || 0,
+    maksimal_potongan: parseInt(document.getElementById("voucher-maks-potongan").value) || 0,
+    kuota: parseInt(document.getElementById("voucher-kuota").value) || 0,
+    tanggal_kadaluarsa: document.getElementById("voucher-kadaluarsa").value,
+    aktif: document.getElementById("voucher-aktif").checked,
+  };
+  try {
+    if (id) await AdminApi.updateVoucher(id, payload);
+    else await AdminApi.createVoucher(payload);
+    showToast("Voucher berhasil disimpan.", "success");
+    closeModal("modal-form");
+    loadVoucher();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+async function deleteVoucher(id) {
+  if (!confirmAction("Yakin ingin menghapus voucher ini?")) return;
+  try {
+    await AdminApi.deleteVoucher(id);
+    showToast("Voucher dihapus.", "success");
+    loadVoucher();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ongkos Kirim | Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+  <div class="panel">
+    <p class="form-hint mt-2" style="margin-bottom:16px">Atur tarif ongkos kirim berdasarkan rentang jarak (dihitung otomatis dari lokasi warung ke pelanggan menggunakan rumus Haversine).</p>
+    <div class="panel-header">
+      <h3>Tarif Ongkos Kirim</h3>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Tarif</button>
+    </div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Jarak Dari (km)</th><th>Jarak Sampai (km)</th><th>Tarif</th><th></th></tr></thead>
+        <tbody id="ongkir-body"><tr><td colspan="4">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-form">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-header"><h3 id="modal-title">Tambah Tarif</h3><button class="modal-close" data-close-modal="modal-form">&times;</button></div>
+    <form id="ongkir-form">
+      <input type="hidden" id="ongkir-id">
+      <div class="form-row">
+        <div class="form-group"><label>Jarak Dari (km) *</label><input type="number" id="ongkir-dari" class="form-control" required min="0" step="0.1"></div>
+        <div class="form-group"><label>Jarak Sampai (km) *</label><input type="number" id="ongkir-sampai" class="form-control" required min="0" step="0.1"></div>
+      </div>
+      <div class="form-group"><label>Tarif (Rp) *</label><input type="number" id="ongkir-tarif" class="form-control" required min="0"></div>
+      <button type="submit" class="btn btn-primary btn-block mt-2" id="btn-save">Simpan</button>
+    </form>
+  </div>
+</div>
+
+<script src="../assets/js/admin-api.js"></script>
+<script src="../assets/js/admin-layout.js"></script>
+<script>
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "../index.html"; return; }
+  renderAdminLayout("ongkir", "Ongkos Kirim");
+  hideLoadingScreen();
+  loadOngkir();
+})();
+
+async function loadOngkir() {
+  const tbody = document.getElementById("ongkir-body");
+  tbody.innerHTML = `<tr><td colspan="4">Memuat...</td></tr>`;
+  try {
+    const list = await AdminApi.listShippingRates();
+    if (!list.length) { tbody.innerHTML = `<tr><td colspan="4" class="text-muted text-center">Belum ada tarif ongkir.</td></tr>`; return; }
+    tbody.innerHTML = list.map((o) => `
+      <tr>
+        <td>${o.jarak_dari_km} km</td>
+        <td>${o.jarak_sampai_km} km</td>
+        <td class="fw-bold">${formatRupiah(o.tarif)}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-sm btn-outline" onclick='openEditModal(${JSON.stringify(o).replace(/'/g, "&apos;")})'>Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteOngkir(${o.id})">Hapus</button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="4" class="text-muted">${err.message}</td></tr>`;
+  }
+}
+
+function resetForm() { document.getElementById("ongkir-form").reset(); document.getElementById("ongkir-id").value = ""; }
+function openCreateModal() { resetForm(); document.getElementById("modal-title").textContent = "Tambah Tarif"; openModal("modal-form"); }
+function openEditModal(o) {
+  resetForm();
+  document.getElementById("modal-title").textContent = "Edit Tarif";
+  document.getElementById("ongkir-id").value = o.id;
+  document.getElementById("ongkir-dari").value = o.jarak_dari_km;
+  document.getElementById("ongkir-sampai").value = o.jarak_sampai_km;
+  document.getElementById("ongkir-tarif").value = o.tarif;
+  openModal("modal-form");
+}
+
+document.getElementById("ongkir-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("ongkir-id").value;
+  const payload = {
+    jarak_dari_km: parseFloat(document.getElementById("ongkir-dari").value),
+    jarak_sampai_km: parseFloat(document.getElementById("ongkir-sampai").value),
+    tarif: parseInt(document.getElementById("ongkir-tarif").value) || 0,
+  };
+  if (payload.jarak_sampai_km <= payload.jarak_dari_km) {
+    showToast("Jarak 'sampai' harus lebih besar dari jarak 'dari'.", "error");
+    return;
+  }
+  try {
+    if (id) await AdminApi.updateShippingRate(id, payload);
+    else await AdminApi.createShippingRate(payload);
+    showToast("Tarif ongkir berhasil disimpan.", "success");
+    closeModal("modal-form");
+    loadOngkir();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+async function deleteOngkir(id) {
+  if (!confirmAction("Yakin ingin menghapus tarif ini?")) return;
+  try {
+    await AdminApi.deleteShippingRate(id);
+    showToast("Tarif dihapus.", "success");
+    loadOngkir();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+</script>
+</body>
+</html>

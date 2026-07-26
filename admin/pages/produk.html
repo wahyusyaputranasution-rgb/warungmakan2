@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Produk | Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="filter-bar" style="margin-bottom:0">
+        <input type="text" id="filter-search" class="form-control" placeholder="Cari produk...">
+        <select id="filter-kategori" class="form-control"><option value="">Semua Kategori</option></select>
+      </div>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Produk</button>
+    </div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Foto</th><th>Nama</th><th>Kategori</th><th>Harga</th><th>Stok</th><th>Status</th><th>Label</th><th></th></tr></thead>
+        <tbody id="produk-body"><tr><td colspan="8">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+</div>
+
+<!-- ===================== MODAL FORM PRODUK ===================== -->
+<div class="modal-overlay" id="modal-form">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="modal-title">Tambah Produk</h3>
+      <button class="modal-close" data-close-modal="modal-form">&times;</button>
+    </div>
+    <form id="produk-form">
+      <input type="hidden" id="produk-id">
+      <div class="form-group">
+        <label>Foto Produk</label>
+        <input type="file" id="produk-foto-input" accept="image/*" class="form-control">
+        <img id="produk-foto-preview" class="img-preview" style="display:none">
+        <input type="hidden" id="produk-foto-url">
+      </div>
+      <div class="form-group">
+        <label>Nama Produk *</label>
+        <input type="text" id="produk-nama" class="form-control" required maxlength="150">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Kategori *</label>
+          <select id="produk-kategori" class="form-control" required></select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="produk-status" class="form-control">
+            <option value="aktif">Aktif</option>
+            <option value="nonaktif">Nonaktif</option>
+            <option value="habis">Habis</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Harga Jual *</label>
+          <input type="number" id="produk-harga" class="form-control" required min="0">
+        </div>
+        <div class="form-group">
+          <label>Harga Coret</label>
+          <input type="number" id="produk-harga-coret" class="form-control" min="0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Diskon (%)</label>
+          <input type="number" id="produk-diskon" class="form-control" min="0" max="100" value="0">
+        </div>
+        <div class="form-group">
+          <label>Stok *</label>
+          <input type="number" id="produk-stok" class="form-control" required min="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Estimasi Masak (menit)</label>
+        <input type="number" id="produk-estimasi" class="form-control" min="1" value="15">
+      </div>
+      <div class="form-group">
+        <label>Deskripsi</label>
+        <textarea id="produk-deskripsi" class="form-control" maxlength="2000"></textarea>
+      </div>
+      <div class="form-row">
+        <label class="form-check"><input type="checkbox" id="produk-best-seller"> Tandai Best Seller</label>
+        <label class="form-check"><input type="checkbox" id="produk-baru"> Tandai Produk Baru</label>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block mt-3" id="btn-save-produk">Simpan Produk</button>
+    </form>
+  </div>
+</div>
+
+<script src="../assets/js/admin-api.js"></script>
+<script src="../assets/js/admin-layout.js"></script>
+<script>
+let currentPage = 1;
+let kategoriList = [];
+let uploadedFotoUrl = "";
+
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "../index.html"; return; }
+  renderAdminLayout("produk", "Kelola Produk");
+  hideLoadingScreen();
+  await loadKategoriOptions();
+  loadProduk();
+
+  let searchDebounce;
+  document.getElementById("filter-search").addEventListener("input", () => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => { currentPage = 1; loadProduk(); }, 400);
+  });
+  document.getElementById("filter-kategori").addEventListener("change", () => { currentPage = 1; loadProduk(); });
+})();
+
+async function loadKategoriOptions() {
+  try {
+    kategoriList = await AdminApi.listCategories();
+    const filterEl = document.getElementById("filter-kategori");
+    const formEl = document.getElementById("produk-kategori");
+    kategoriList.forEach((k) => {
+      filterEl.innerHTML += `<option value="${k.id}">${k.nama}</option>`;
+      formEl.innerHTML += `<option value="${k.id}">${k.nama}</option>`;
+    });
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function loadProduk() {
+  const tbody = document.getElementById("produk-body");
+  tbody.innerHTML = `<tr><td colspan="8">Memuat...</td></tr>`;
+  try {
+    const params = { page: currentPage, per_page: 15 };
+    const search = document.getElementById("filter-search").value.trim();
+    const kategoriId = document.getElementById("filter-kategori").value;
+    if (search) params.q = search;
+    if (kategoriId) params.kategori_id = kategoriId;
+
+    const result = await AdminApi.listProducts(params);
+    if (!result.items.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-muted text-center">Belum ada produk.</td></tr>`;
+      document.getElementById("pagination").innerHTML = "";
+      return;
+    }
+
+    tbody.innerHTML = result.items.map((p) => `
+      <tr>
+        <td><img class="thumb" src="${p.foto_url || "../../assets/images/produk-placeholder.svg"}" alt=""></td>
+        <td class="fw-bold">${p.nama}</td>
+        <td>${p.kategori_nama}</td>
+        <td>${formatRupiah(p.harga)}</td>
+        <td>${p.stok}</td>
+        <td><span class="pill ${p.status === "aktif" ? "green" : p.status === "habis" ? "red" : "gray"}">${p.status}</span></td>
+        <td>${p.best_seller ? '<span class="pill yellow">Best</span> ' : ""}${p.produk_baru ? '<span class="pill blue">Baru</span>' : ""}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-icon-only" onclick='openEditModal(${JSON.stringify(p).replace(/'/g, "&apos;")})' title="Edit">${svgIcon("settings", 15)}</button>
+            <button class="btn btn-icon-only" onclick="deleteProduk(${p.id})" title="Hapus">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+
+    renderPagination(result.page, result.total_pages);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${err.message}</td></tr>`;
+  }
+}
+
+function renderPagination(page, totalPages) {
+  const el = document.getElementById("pagination");
+  if (totalPages <= 1) { el.innerHTML = ""; return; }
+  let html = `<button ${page <= 1 ? "disabled" : ""} onclick="goPage(${page - 1})">‹</button>`;
+  for (let i = 1; i <= totalPages; i++) html += `<button class="${i === page ? "active" : ""}" onclick="goPage(${i})">${i}</button>`;
+  html += `<button ${page >= totalPages ? "disabled" : ""} onclick="goPage(${page + 1})">›</button>`;
+  el.innerHTML = html;
+}
+function goPage(p) { currentPage = p; loadProduk(); }
+
+function resetForm() {
+  document.getElementById("produk-form").reset();
+  document.getElementById("produk-id").value = "";
+  document.getElementById("produk-foto-url").value = "";
+  document.getElementById("produk-foto-preview").style.display = "none";
+  uploadedFotoUrl = "";
+}
+
+function openCreateModal() {
+  resetForm();
+  document.getElementById("modal-title").textContent = "Tambah Produk";
+  openModal("modal-form");
+}
+
+function openEditModal(p) {
+  resetForm();
+  document.getElementById("modal-title").textContent = "Edit Produk";
+  document.getElementById("produk-id").value = p.id;
+  document.getElementById("produk-nama").value = p.nama;
+  document.getElementById("produk-kategori").value = p.kategori_id;
+  document.getElementById("produk-status").value = p.status;
+  document.getElementById("produk-harga").value = p.harga;
+  document.getElementById("produk-harga-coret").value = p.harga_coret || "";
+  document.getElementById("produk-diskon").value = p.diskon_persen || 0;
+  document.getElementById("produk-stok").value = p.stok;
+  document.getElementById("produk-estimasi").value = p.estimasi_masak_menit;
+  document.getElementById("produk-deskripsi").value = p.deskripsi || "";
+  document.getElementById("produk-best-seller").checked = !!p.best_seller;
+  document.getElementById("produk-baru").checked = !!p.produk_baru;
+  if (p.foto_url) {
+    document.getElementById("produk-foto-url").value = p.foto_url;
+    document.getElementById("produk-foto-preview").src = p.foto_url;
+    document.getElementById("produk-foto-preview").style.display = "block";
+    uploadedFotoUrl = p.foto_url;
+  }
+  openModal("modal-form");
+}
+
+document.getElementById("produk-foto-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const preview = document.getElementById("produk-foto-preview");
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = "block";
+
+  try {
+    const result = await AdminApi.uploadImage(file);
+    uploadedFotoUrl = result.url;
+    document.getElementById("produk-foto-url").value = result.url;
+    showToast("Foto berhasil diunggah.", "success");
+  } catch (err) {
+    showToast("Gagal unggah foto: " + err.message, "error");
+  }
+});
+
+document.getElementById("produk-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("produk-id").value;
+  const btn = document.getElementById("btn-save-produk");
+  btn.disabled = true; btn.textContent = "Menyimpan...";
+
+  const payload = {
+    nama: document.getElementById("produk-nama").value.trim(),
+    kategori_id: parseInt(document.getElementById("produk-kategori").value),
+    status: document.getElementById("produk-status").value,
+    harga: parseInt(document.getElementById("produk-harga").value) || 0,
+    harga_coret: parseInt(document.getElementById("produk-harga-coret").value) || 0,
+    diskon_persen: parseInt(document.getElementById("produk-diskon").value) || 0,
+    stok: parseInt(document.getElementById("produk-stok").value) || 0,
+    estimasi_masak_menit: parseInt(document.getElementById("produk-estimasi").value) || 15,
+    deskripsi: document.getElementById("produk-deskripsi").value.trim(),
+    best_seller: document.getElementById("produk-best-seller").checked,
+    produk_baru: document.getElementById("produk-baru").checked,
+    foto_url: uploadedFotoUrl,
+  };
+
+  try {
+    if (id) await AdminApi.updateProduct(id, payload);
+    else await AdminApi.createProduct(payload);
+    showToast("Produk berhasil disimpan.", "success");
+    closeModal("modal-form");
+    loadProduk();
+  } catch (err) {
+    showToast(err.message, "error");
+  } finally {
+    btn.disabled = false; btn.textContent = "Simpan Produk";
+  }
+});
+
+async function deleteProduk(id) {
+  if (!confirmAction("Yakin ingin menghapus produk ini?")) return;
+  try {
+    const result = await AdminApi.deleteProduct(id);
+    showToast(result.message, "success");
+    loadProduk();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+</script>
+</body>
+</html>

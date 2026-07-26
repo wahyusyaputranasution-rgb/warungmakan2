@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard | Admin Warung Makan</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+
+  <div class="stat-grid" id="stat-grid">
+    <div class="stat-card"><div class="skeleton" style="height:80px"></div></div>
+    <div class="stat-card"><div class="skeleton" style="height:80px"></div></div>
+    <div class="stat-card"><div class="skeleton" style="height:80px"></div></div>
+    <div class="stat-card"><div class="skeleton" style="height:80px"></div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h3>Pendapatan 7 Hari Terakhir</h3></div>
+    <div class="mini-bar-chart" id="grafik-7-hari"></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr;gap:20px" id="dashboard-grid">
+    <div class="panel">
+      <div class="panel-header"><h3>Produk Terlaris</h3></div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Produk</th><th>Terjual</th></tr></thead>
+          <tbody id="produk-terlaris-body"><tr><td colspan="2">Memuat...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><h3>Produk Stok Habis</h3></div>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Produk</th><th>Stok</th></tr></thead>
+          <tbody id="produk-habis-body"><tr><td colspan="2">Memuat...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="assets/js/admin-api.js"></script>
+<script src="assets/js/admin-layout.js"></script>
+<script>
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "index.html"; return; }
+
+  renderAdminLayout("dashboard", "Dashboard");
+  hideLoadingScreen();
+  loadDashboard();
+
+  document.getElementById("dashboard-grid").style.gridTemplateColumns = window.innerWidth > 800 ? "1fr 1fr" : "1fr";
+})();
+
+async function loadDashboard() {
+  try {
+    const data = await AdminApi.dashboard();
+
+    document.getElementById("stat-grid").innerHTML = `
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#dbeafe;color:#1d4ed8">${svgIcon("shopping-bag", 20)}</div>
+        <div class="stat-value">${data.pesanan_hari_ini}</div>
+        <div class="stat-label">Pesanan Hari Ini</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#dcfce7;color:#15803d">${svgIcon("bar-chart", 20)}</div>
+        <div class="stat-value">${formatRupiah(data.pendapatan_hari_ini)}</div>
+        <div class="stat-label">Pendapatan Hari Ini</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fef9c3;color:#a16207">${svgIcon("percent", 20)}</div>
+        <div class="stat-value">${formatRupiah(data.pendapatan_bulan_ini)}</div>
+        <div class="stat-label">Pendapatan Bulan Ini</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fee2e2;color:#b91c1c">${svgIcon("box", 20)}</div>
+        <div class="stat-value">${data.produk_habis.length}</div>
+        <div class="stat-label">Produk Stok Habis</div>
+      </div>
+    `;
+
+    const maxPendapatan = Math.max(...data.grafik_7_hari.map((g) => g.pendapatan), 1);
+    document.getElementById("grafik-7-hari").innerHTML = data.grafik_7_hari.length
+      ? data.grafik_7_hari.map((g) => `
+          <div class="bar-col">
+            <div class="bar" style="height:${Math.max((g.pendapatan / maxPendapatan) * 120, 4)}px" title="${formatRupiah(g.pendapatan)}"></div>
+            <span class="bar-label">${formatTanggalSingkat(g.tanggal)}</span>
+          </div>
+        `).join("")
+      : `<p class="text-muted" style="padding:20px 0">Belum ada data.</p>`;
+
+    document.getElementById("produk-terlaris-body").innerHTML = data.produk_terlaris.length
+      ? data.produk_terlaris.map((p) => `<tr><td>${p.nama}</td><td>${p.terjual}</td></tr>`).join("")
+      : `<tr><td colspan="2" class="text-muted">Belum ada data penjualan.</td></tr>`;
+
+    document.getElementById("produk-habis-body").innerHTML = data.produk_habis.length
+      ? data.produk_habis.map((p) => `<tr><td>${p.nama}</td><td><span class="pill red">${p.stok}</span></td></tr>`).join("")
+      : `<tr><td colspan="2" class="text-muted">Semua produk stok tersedia.</td></tr>`;
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+</script>
+</body>
+</html>

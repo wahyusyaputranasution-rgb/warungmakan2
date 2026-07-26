@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pengaturan | Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+
+  <div class="panel">
+    <div class="panel-header"><h3>Identitas Warung</h3></div>
+    <form id="settings-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Logo</label>
+          <input type="file" id="input-logo" accept="image/*" class="form-control">
+          <img id="preview-logo" class="img-preview" style="display:none">
+          <input type="hidden" id="logo-url">
+        </div>
+        <div class="form-group">
+          <label>Favicon</label>
+          <input type="file" id="input-favicon" accept="image/*" class="form-control">
+          <img id="preview-favicon" class="img-preview" style="display:none;width:48px;height:48px">
+          <input type="hidden" id="favicon-url">
+        </div>
+      </div>
+      <div class="form-group"><label>Nama Warung *</label><input type="text" id="nama-warung" class="form-control" required maxlength="150"></div>
+      <div class="form-group"><label>Deskripsi Singkat</label><textarea id="deskripsi-singkat" class="form-control" maxlength="500"></textarea></div>
+      <div class="form-group"><label>Alamat Lengkap *</label><textarea id="alamat" class="form-control" required maxlength="500"></textarea></div>
+
+      <div class="form-row">
+        <div class="form-group"><label>Nomor WhatsApp *</label><input type="text" id="whatsapp" class="form-control" required placeholder="628xxxxxxxxxx"></div>
+        <div class="form-group"><label>Minimal Order (Rp)</label><input type="number" id="minimal-order" class="form-control" min="0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Instagram (username)</label><input type="text" id="instagram" class="form-control" placeholder="namawarung"></div>
+        <div class="form-group"><label>Facebook (URL)</label><input type="text" id="facebook" class="form-control" placeholder="https://facebook.com/..."></div>
+      </div>
+
+      <div class="form-group"><label class="form-check"><input type="checkbox" id="status-buka"> Warung Sedang Buka (terima pesanan)</label></div>
+
+      <div class="form-group">
+        <label>Lokasi Warung (klik peta untuk mengubah titik lokasi)</label>
+        <div id="map-lokasi" style="height:280px;border-radius:10px"></div>
+        <p class="form-hint">Latitude: <span id="lbl-lat">-</span>, Longitude: <span id="lbl-lng">-</span></p>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="btn-save">Simpan Pengaturan</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h3>Ubah Password Saya</h3></div>
+    <form id="password-form" style="max-width:400px">
+      <div class="form-group"><label>Password Lama *</label><input type="password" id="password-lama" class="form-control" required></div>
+      <div class="form-group"><label>Password Baru *</label><input type="password" id="password-baru" class="form-control" required minlength="6"></div>
+      <button type="submit" class="btn btn-outline">Ubah Password</button>
+    </form>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="../assets/js/admin-api.js"></script>
+<script src="../assets/js/admin-layout.js"></script>
+<script>
+let map, marker;
+let selectedLat, selectedLng;
+
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "../index.html"; return; }
+  renderAdminLayout("pengaturan", "Pengaturan Website");
+  hideLoadingScreen();
+  loadSettings();
+})();
+
+async function loadSettings() {
+  try {
+    const s = await AdminApi.getSettings();
+    document.getElementById("nama-warung").value = s.nama_warung;
+    document.getElementById("deskripsi-singkat").value = s.deskripsi_singkat || "";
+    document.getElementById("alamat").value = s.alamat || "";
+    document.getElementById("whatsapp").value = s.whatsapp || "";
+    document.getElementById("minimal-order").value = s.minimal_order || 0;
+    document.getElementById("instagram").value = s.instagram || "";
+    document.getElementById("facebook").value = s.facebook || "";
+    document.getElementById("status-buka").checked = s.status_buka === 1;
+    if (s.logo_url) { document.getElementById("logo-url").value = s.logo_url; document.getElementById("preview-logo").src = s.logo_url; document.getElementById("preview-logo").style.display = "block"; }
+    if (s.favicon_url) { document.getElementById("favicon-url").value = s.favicon_url; document.getElementById("preview-favicon").src = s.favicon_url; document.getElementById("preview-favicon").style.display = "block"; }
+
+    selectedLat = s.latitude;
+    selectedLng = s.longitude;
+    document.getElementById("lbl-lat").textContent = selectedLat.toFixed(6);
+    document.getElementById("lbl-lng").textContent = selectedLng.toFixed(6);
+
+    map = L.map("map-lokasi").setView([selectedLat, selectedLng], 15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "&copy; OpenStreetMap" }).addTo(map);
+    marker = L.marker([selectedLat, selectedLng], { draggable: true }).addTo(map);
+    marker.on("dragend", () => {
+      const pos = marker.getLatLng();
+      selectedLat = pos.lat; selectedLng = pos.lng;
+      document.getElementById("lbl-lat").textContent = selectedLat.toFixed(6);
+      document.getElementById("lbl-lng").textContent = selectedLng.toFixed(6);
+    });
+    map.on("click", (e) => {
+      selectedLat = e.latlng.lat; selectedLng = e.latlng.lng;
+      marker.setLatLng(e.latlng);
+      document.getElementById("lbl-lat").textContent = selectedLat.toFixed(6);
+      document.getElementById("lbl-lng").textContent = selectedLng.toFixed(6);
+    });
+    setTimeout(() => map.invalidateSize(), 200);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function handleImageUpload(inputId, previewId, hiddenId) {
+  document.getElementById(inputId).addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const preview = document.getElementById(previewId);
+    preview.src = URL.createObjectURL(file);
+    preview.style.display = "block";
+    try {
+      const result = await AdminApi.uploadImage(file);
+      document.getElementById(hiddenId).value = result.url;
+      showToast("Gambar berhasil diunggah.", "success");
+    } catch (err) {
+      showToast("Gagal unggah: " + err.message, "error");
+    }
+  });
+}
+handleImageUpload("input-logo", "preview-logo", "logo-url");
+handleImageUpload("input-favicon", "preview-favicon", "favicon-url");
+
+document.getElementById("settings-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btn-save");
+  btn.disabled = true; btn.textContent = "Menyimpan...";
+  const payload = {
+    nama_warung: document.getElementById("nama-warung").value.trim(),
+    deskripsi_singkat: document.getElementById("deskripsi-singkat").value.trim(),
+    alamat: document.getElementById("alamat").value.trim(),
+    whatsapp: document.getElementById("whatsapp").value.trim(),
+    minimal_order: parseInt(document.getElementById("minimal-order").value) || 0,
+    instagram: document.getElementById("instagram").value.trim(),
+    facebook: document.getElementById("facebook").value.trim(),
+    status_buka: document.getElementById("status-buka").checked,
+    logo_url: document.getElementById("logo-url").value,
+    favicon_url: document.getElementById("favicon-url").value,
+    latitude: selectedLat,
+    longitude: selectedLng,
+  };
+  try {
+    await AdminApi.updateSettings(payload);
+    showToast("Pengaturan berhasil disimpan.", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  } finally {
+    btn.disabled = false; btn.textContent = "Simpan Pengaturan";
+  }
+});
+
+document.getElementById("password-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const payload = {
+    password_lama: document.getElementById("password-lama").value,
+    password_baru: document.getElementById("password-baru").value,
+  };
+  try {
+    await AdminApi.changePassword(payload);
+    showToast("Password berhasil diubah, silakan login kembali.", "success");
+    setTimeout(() => { clearToken(); window.location.href = "../index.html"; }, 1500);
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+</script>
+</body>
+</html>

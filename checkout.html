@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<header class="site-header">
+  <div class="header-inner">
+    <button onclick="history.back()" class="icon-btn" aria-label="Kembali">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    </button>
+    <span class="fw-bold">Checkout</span>
+    <div style="width:40px"></div>
+  </div>
+</header>
+
+<div id="checkout-empty" class="empty-state" style="display:none">
+  <p>Keranjang Anda kosong. Silakan pilih menu terlebih dahulu.</p>
+  <a href="menu.html" class="btn btn-primary mt-3">Lihat Menu</a>
+</div>
+
+<form id="checkout-form" class="section" style="padding-bottom:120px">
+
+  <h3 style="font-size:0.95rem;margin-bottom:12px">1. Data Pemesan</h3>
+  <div class="form-group">
+    <label for="nama">Nama Lengkap *</label>
+    <input type="text" id="nama" class="form-control" placeholder="Nama Anda" required maxlength="100">
+  </div>
+  <div class="form-group">
+    <label for="whatsapp">Nomor WhatsApp *</label>
+    <input type="tel" id="whatsapp" class="form-control" placeholder="Contoh: 6281234567890" required maxlength="20">
+    <p class="form-hint">Gunakan format 62xxxx, digunakan untuk konfirmasi pesanan.</p>
+  </div>
+
+  <h3 style="font-size:0.95rem;margin:24px 0 12px">2. Lokasi Pengiriman</h3>
+  <div class="form-group">
+    <button type="button" id="btn-lacak-lokasi" class="btn btn-outline btn-block">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      Lacak Lokasi Saya
+    </button>
+    <p class="form-hint" id="lokasi-status">Kami butuh izin lokasi untuk menghitung ongkos kirim secara otomatis.</p>
+  </div>
+  <div id="map-wrapper" style="display:none;margin-bottom:16px">
+    <div id="map"></div>
+  </div>
+
+  <div class="form-group">
+    <label for="alamat">Alamat Lengkap *</label>
+    <textarea id="alamat" class="form-control" placeholder="Nama jalan, nomor rumah, RT/RW, kelurahan, kecamatan" required maxlength="500"></textarea>
+  </div>
+  <div class="form-group">
+    <label for="patokan">Patokan (opsional)</label>
+    <input type="text" id="patokan" class="form-control" placeholder="Contoh: dekat masjid, sebelah minimarket" maxlength="300">
+  </div>
+  <div class="form-group">
+    <label for="catatan">Catatan untuk Kurir (opsional)</label>
+    <textarea id="catatan" class="form-control" placeholder="Contoh: rumah pagar hijau, titip di satpam, dll." maxlength="500"></textarea>
+  </div>
+
+  <h3 style="font-size:0.95rem;margin:24px 0 12px">3. Voucher</h3>
+  <div class="form-group flex gap-2">
+    <input type="text" id="voucher-kode" class="form-control" placeholder="Masukkan kode voucher">
+    <button type="button" id="btn-apply-voucher" class="btn btn-outline">Pakai</button>
+  </div>
+  <p class="form-hint" id="voucher-status"></p>
+
+  <h3 style="font-size:0.95rem;margin:24px 0 12px">4. Ringkasan Pesanan</h3>
+  <div id="checkout-items" style="background:var(--color-surface);border-radius:var(--radius-md);padding:12px 16px;box-shadow:var(--shadow-sm)"></div>
+
+  <div style="background:var(--color-surface);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);margin-top:12px">
+    <div class="summary-row"><span>Subtotal</span><span id="sum-subtotal">Rp0</span></div>
+    <div class="summary-row"><span>Ongkos Kirim</span><span id="sum-ongkir">Belum dihitung</span></div>
+    <div class="summary-row" id="sum-diskon-row" style="display:none"><span>Diskon Voucher</span><span id="sum-diskon" style="color:var(--color-success)">-Rp0</span></div>
+    <div class="summary-row total"><span>Total Bayar</span><span id="sum-total">Rp0</span></div>
+  </div>
+
+  <div class="form-group mt-3">
+    <label>Metode Pembayaran</label>
+    <div style="background:var(--color-primary-light);color:var(--color-primary-dark);padding:12px 16px;border-radius:var(--radius-sm);font-size:0.85rem;font-weight:600">
+      💵 Cash On Delivery (COD) — Bayar tunai saat pesanan tiba
+    </div>
+  </div>
+
+  <div class="sticky-bottom-bar">
+    <button type="submit" id="btn-submit-order" class="btn btn-primary btn-block" disabled>Lacak lokasi terlebih dahulu</button>
+  </div>
+</form>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/cart.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+let userLatLng = null;
+let map, userMarker, warungMarker;
+let ongkirData = null;
+let voucherData = null;
+
+const items = Cart.getItems();
+if (!items.length) {
+  document.getElementById("checkout-form").style.display = "none";
+  document.getElementById("checkout-empty").style.display = "block";
+}
+
+function renderItems() {
+  const el = document.getElementById("checkout-items");
+  el.innerHTML = items.map((item) => `
+    <div class="flex justify-between" style="padding:6px 0;font-size:0.85rem">
+      <span>${item.jumlah}x ${item.nama}${item.catatan ? ` <span class="text-muted">(${item.catatan})</span>` : ""}</span>
+      <span>${formatRupiah(item.harga * item.jumlah)}</span>
+    </div>
+  `).join("");
+  document.getElementById("sum-subtotal").textContent = formatRupiah(Cart.getSubtotal());
+  updateTotal();
+}
+
+function updateTotal() {
+  const subtotal = Cart.getSubtotal();
+  const ongkir = ongkirData ? ongkirData.ongkir : 0;
+  const diskon = voucherData ? voucherData.potongan : 0;
+  document.getElementById("sum-total").textContent = formatRupiah(subtotal + ongkir - diskon);
+}
+
+async function initMap(lat, lng, warungLat, warungLng) {
+  document.getElementById("map-wrapper").style.display = "block";
+  if (!map) {
+    map = L.map("map").setView([lat, lng], 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
+  }
+  if (userMarker) map.removeLayer(userMarker);
+  userMarker = L.marker([lat, lng]).addTo(map).bindPopup("Lokasi Anda").openPopup();
+
+  if (warungLat && warungLng) {
+    if (warungMarker) map.removeLayer(warungMarker);
+    const warungIcon = L.divIcon({ html: "🏠", iconSize: [24, 24], className: "" });
+    warungMarker = L.marker([warungLat, warungLng], { icon: warungIcon }).addTo(map).bindPopup("Lokasi Warung");
+    const bounds = L.latLngBounds([[lat, lng], [warungLat, warungLng]]);
+    map.fitBounds(bounds, { padding: [40, 40] });
+  } else {
+    map.setView([lat, lng], 15);
+  }
+  setTimeout(() => map.invalidateSize(), 200);
+}
+
+async function reverseGeocode(lat, lng) {
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`, {
+      headers: { "Accept-Language": "id" },
+    });
+    const data = await res.json();
+    return data.display_name || "";
+  } catch (err) {
+    return "";
+  }
+}
+
+document.getElementById("btn-lacak-lokasi").addEventListener("click", () => {
+  const statusEl = document.getElementById("lokasi-status");
+  const btn = document.getElementById("btn-lacak-lokasi");
+
+  if (!navigator.geolocation) {
+    statusEl.textContent = "Perangkat/browser Anda tidak mendukung geolokasi.";
+    statusEl.className = "form-error";
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "Mencari lokasi Anda...";
+  statusEl.textContent = "Mohon izinkan akses lokasi pada dialog browser Anda.";
+
+  const watchId = navigator.geolocation.watchPosition(
+    async (position) => {
+      const { latitude, longitude, accuracy } = position.coords;
+      userLatLng = { latitude, longitude, accuracy };
+
+      btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> Lokasi Ditemukan`;
+      btn.disabled = false;
+      statusEl.textContent = `Akurasi: ~${Math.round(accuracy)} meter. Menghitung ongkos kirim...`;
+
+      try {
+        const settings = window.__siteSettings || await Api.getSettings();
+        initMap(latitude, longitude, settings.latitude, settings.longitude);
+
+        const alamatOtomatis = await reverseGeocode(latitude, longitude);
+        const alamatField = document.getElementById("alamat");
+        if (alamatOtomatis && !alamatField.value) alamatField.value = alamatOtomatis;
+
+        const ongkirResult = await Api.calculateShipping(latitude, longitude);
+        ongkirData = ongkirResult;
+        document.getElementById("sum-ongkir").textContent = formatRupiah(ongkirResult.ongkir);
+        statusEl.textContent = `Jarak Anda ke warung: ${ongkirResult.jarak_km} km. Ongkir: ${formatRupiah(ongkirResult.ongkir)}`;
+        statusEl.className = "form-hint";
+        updateTotal();
+
+        document.getElementById("btn-submit-order").disabled = false;
+        document.getElementById("btn-submit-order").textContent = "Buat Pesanan Sekarang";
+      } catch (err) {
+        statusEl.textContent = err.message;
+        statusEl.className = "form-error";
+        document.getElementById("btn-submit-order").disabled = true;
+        document.getElementById("btn-submit-order").textContent = "Lokasi di luar jangkauan";
+      }
+
+      navigator.geolocation.clearWatch(watchId);
+    },
+    (error) => {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> Lacak Lokasi Saya`;
+      let msg = "Gagal mendapatkan lokasi. ";
+      if (error.code === error.PERMISSION_DENIED) msg += "Anda menolak izin lokasi.";
+      else if (error.code === error.POSITION_UNAVAILABLE) msg += "Informasi lokasi tidak tersedia.";
+      else if (error.code === error.TIMEOUT) msg += "Waktu pencarian lokasi habis.";
+      statusEl.textContent = msg;
+      statusEl.className = "form-error";
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+});
+
+document.getElementById("btn-apply-voucher").addEventListener("click", async () => {
+  const kode = document.getElementById("voucher-kode").value.trim();
+  const statusEl = document.getElementById("voucher-status");
+  if (!kode) return;
+
+  try {
+    const result = await Api.validateVoucher(kode, Cart.getSubtotal());
+    voucherData = result;
+    statusEl.textContent = `Voucher "${result.kode}" berhasil dipakai! Potongan ${formatRupiah(result.potongan)}`;
+    statusEl.className = "form-hint";
+    statusEl.style.color = "var(--color-success)";
+    document.getElementById("sum-diskon-row").style.display = "flex";
+    document.getElementById("sum-diskon").textContent = "-" + formatRupiah(result.potongan);
+    updateTotal();
+  } catch (err) {
+    voucherData = null;
+    document.getElementById("sum-diskon-row").style.display = "none";
+    statusEl.textContent = err.message;
+    statusEl.className = "form-error";
+    updateTotal();
+  }
+});
+
+document.getElementById("checkout-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!userLatLng) { showToast("Silakan lacak lokasi Anda terlebih dahulu.", "error"); return; }
+
+  const submitBtn = document.getElementById("btn-submit-order");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Memproses pesanan...";
+
+  const payload = {
+    nama: document.getElementById("nama").value.trim(),
+    whatsapp: document.getElementById("whatsapp").value.trim(),
+    alamat: document.getElementById("alamat").value.trim(),
+    patokan: document.getElementById("patokan").value.trim(),
+    catatan: document.getElementById("catatan").value.trim(),
+    latitude: userLatLng.latitude,
+    longitude: userLatLng.longitude,
+    akurasi_meter: userLatLng.accuracy,
+    items: items.map((i) => ({ produk_id: i.produk_id, jumlah: i.jumlah, catatan: i.catatan })),
+    voucher_kode: voucherData ? voucherData.kode : null,
+  };
+
+  try {
+    const result = await Api.createOrder(payload);
+    Cart.clear();
+    window.location.href = `status-pesanan.html?nomor=${encodeURIComponent(result.nomor_pesanan)}&baru=1`;
+  } catch (err) {
+    showToast(err.message, "error", 4000);
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Buat Pesanan Sekarang";
+  }
+});
+
+renderItems();
+</script>
+</body>
+</html>

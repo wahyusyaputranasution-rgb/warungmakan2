@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jam Operasional | Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+  <div class="panel">
+    <div class="panel-header"><h3>Jam Operasional Mingguan</h3></div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Hari</th><th>Jam Buka</th><th>Jam Tutup</th><th>Libur</th><th></th></tr></thead>
+        <tbody id="jam-body"><tr><td colspan="5">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/admin-api.js"></script>
+<script src="../assets/js/admin-layout.js"></script>
+<script>
+const NAMA_HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "../index.html"; return; }
+  renderAdminLayout("jam-operasional", "Jam Operasional");
+  hideLoadingScreen();
+  loadJam();
+})();
+
+async function loadJam() {
+  const tbody = document.getElementById("jam-body");
+  tbody.innerHTML = `<tr><td colspan="5">Memuat...</td></tr>`;
+  try {
+    const list = await AdminApi.listOperatingHours();
+    list.sort((a, b) => a.hari - b.hari);
+    tbody.innerHTML = list.map((j) => `
+      <tr data-id="${j.id}">
+        <td class="fw-bold">${NAMA_HARI[j.hari]}</td>
+        <td><input type="time" class="form-control input-buka" value="${j.jam_buka}" style="max-width:130px" ${j.libur ? "disabled" : ""}></td>
+        <td><input type="time" class="form-control input-tutup" value="${j.jam_tutup}" style="max-width:130px" ${j.libur ? "disabled" : ""}></td>
+        <td><input type="checkbox" class="input-libur" ${j.libur ? "checked" : ""} style="width:18px;height:18px"></td>
+        <td><button class="btn btn-sm btn-primary" onclick="simpanJam(${j.id}, this)">Simpan</button></td>
+      </tr>
+    `).join("");
+
+    tbody.querySelectorAll(".input-libur").forEach((chk) => {
+      chk.addEventListener("change", (e) => {
+        const row = e.target.closest("tr");
+        row.querySelector(".input-buka").disabled = e.target.checked;
+        row.querySelector(".input-tutup").disabled = e.target.checked;
+      });
+    });
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${err.message}</td></tr>`;
+  }
+}
+
+async function simpanJam(id, btn) {
+  const row = btn.closest("tr");
+  const payload = {
+    jam_buka: row.querySelector(".input-buka").value,
+    jam_tutup: row.querySelector(".input-tutup").value,
+    libur: row.querySelector(".input-libur").checked,
+  };
+  btn.disabled = true;
+  try {
+    await AdminApi.updateOperatingHour(id, payload);
+    showToast("Jam operasional diperbarui.", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

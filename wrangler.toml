@@ -1,0 +1,50 @@
+# ==========================================================
+# WRANGLER CONFIG - WARUNG MAKAN API (Cloudflare Worker)
+# ==========================================================
+# File ini mengonfigurasi Worker backend (api/worker.js) yang di-deploy
+# TERPISAH dari Cloudflare Pages (frontend statis).
+#
+# Alur deployment:
+#   1. Deploy Worker ini terlebih dahulu -> menghasilkan URL seperti
+#      https://warung-makan-api.<subdomain-anda>.workers.dev
+#   2. Isi URL tersebut ke assets/js/api.js dan admin/assets/js/admin-api.js
+#      pada variabel API_BASE_URL.
+#   3. Deploy folder root project ini ke Cloudflare Pages (frontend statis).
+#
+# Lihat README.md untuk langkah lengkap.
+
+name = "warung-makan-api"
+main = "api/worker.js"
+compatibility_date = "2024-09-23"
+
+# ==========================================================
+# D1 DATABASE BINDING
+# ==========================================================
+# Buat database dengan:
+#   wrangler d1 create warung_makan_db
+# Salin "database_id" yang muncul pada output ke bawah ini.
+[[d1_databases]]
+binding = "DB"
+database_name = "warung_makan_db"
+database_id = "ISI_DENGAN_DATABASE_ID_ANDA"
+
+# ==========================================================
+# R2 BUCKET BINDING (untuk upload foto produk/banner/promo)
+# ==========================================================
+# Buat bucket dengan:
+#   wrangler r2 bucket create warung-makan-images
+# Jika R2 tidak tersedia di akun Anda (misalnya paket free tanpa R2 aktif),
+# Worker otomatis fallback menyimpan gambar sebagai Base64 — hapus saja
+# blok [[r2_buckets]] di bawah ini dan sistem tetap berjalan normal.
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "warung-makan-images"
+
+# ==========================================================
+# ENVIRONMENT VARIABLES
+# ==========================================================
+[vars]
+# WAJIB DIGANTI sebelum deploy produksi — gunakan string acak yang panjang.
+# Contoh membuat secret acak: openssl rand -hex 32
+JWT_SECRET = "ganti_dengan_secret_key_yang_sangat_rahasia_dan_panjang_123456"
+APP_ENV = "production"

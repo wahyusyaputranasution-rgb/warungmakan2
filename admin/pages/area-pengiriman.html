@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Area Pengiriman | Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+  <div class="panel">
+    <div class="panel-header"><h3>Area Jangkauan Pengiriman</h3></div>
+    <p class="form-hint" style="margin-bottom:16px">Pesanan dari pelanggan di luar radius berikut akan otomatis ditolak sistem.</p>
+
+    <div id="map-area" style="height:320px;border-radius:10px;margin-bottom:16px"></div>
+
+    <form id="area-form" style="max-width:340px">
+      <div class="form-group">
+        <label>Radius Maksimal Pengiriman (km) *</label>
+        <input type="number" id="radius-input" class="form-control" required min="0.5" step="0.5">
+      </div>
+      <button type="submit" class="btn btn-primary" id="btn-save">Simpan Perubahan</button>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="../assets/js/admin-api.js"></script>
+<script src="../assets/js/admin-layout.js"></script>
+<script>
+let map, circle;
+
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "../index.html"; return; }
+  renderAdminLayout("area-pengiriman", "Area Pengiriman");
+  hideLoadingScreen();
+  loadArea();
+})();
+
+async function loadArea() {
+  try {
+    const settings = await AdminApi.getSettings();
+    document.getElementById("radius-input").value = settings.radius_maksimal_km;
+
+    map = L.map("map-area").setView([settings.latitude, settings.longitude], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "&copy; OpenStreetMap" }).addTo(map);
+    const warungIcon = L.divIcon({ html: "🏠", iconSize: [24, 24], className: "" });
+    L.marker([settings.latitude, settings.longitude], { icon: warungIcon }).addTo(map).bindPopup(settings.nama_warung);
+
+    circle = L.circle([settings.latitude, settings.longitude], {
+      radius: settings.radius_maksimal_km * 1000,
+      color: "#ff6b35", fillColor: "#ff6b35", fillOpacity: 0.15,
+    }).addTo(map);
+    map.fitBounds(circle.getBounds());
+    setTimeout(() => map.invalidateSize(), 200);
+
+    document.getElementById("radius-input").addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value) || 0;
+      if (circle) {
+        circle.setRadius(val * 1000);
+        map.fitBounds(circle.getBounds());
+      }
+    });
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+document.getElementById("area-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById("btn-save");
+  btn.disabled = true;
+  try {
+    await AdminApi.updateDeliveryArea({ radius_maksimal_km: parseFloat(document.getElementById("radius-input").value) });
+    showToast("Area pengiriman diperbarui.", "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

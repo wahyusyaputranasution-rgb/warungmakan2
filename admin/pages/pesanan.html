@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pesanan | Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+
+  <div class="panel">
+    <div class="filter-bar">
+      <input type="text" id="filter-search" class="form-control" placeholder="Cari nomor/nama/WA...">
+      <select id="filter-status" class="form-control">
+        <option value="">Semua Status</option>
+        <option value="menunggu">Menunggu</option>
+        <option value="diproses">Diproses</option>
+        <option value="dimasak">Sedang Dimasak</option>
+        <option value="siap_diantar">Siap Diantar</option>
+        <option value="diantar">Sedang Diantar</option>
+        <option value="selesai">Selesai</option>
+        <option value="dibatalkan">Dibatalkan</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Nomor</th><th>Tanggal</th><th>Nama</th><th>WhatsApp</th><th>Jarak</th><th>Total</th><th>Status</th><th></th></tr></thead>
+        <tbody id="orders-body"><tr><td colspan="8">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+</div>
+
+<!-- ===================== MODAL DETAIL PESANAN ===================== -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-header">
+      <h3 id="detail-nomor">Detail Pesanan</h3>
+      <button class="modal-close" data-close-modal="modal-detail">&times;</button>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="../assets/js/admin-api.js"></script>
+<script src="../assets/js/admin-layout.js"></script>
+<script>
+let currentPage = 1;
+let detailMap = null;
+
+const STATUS_LABELS = {
+  menunggu: "Menunggu", diproses: "Diproses", dimasak: "Dimasak", siap_diantar: "Siap Diantar",
+  diantar: "Diantar", selesai: "Selesai", dibatalkan: "Dibatalkan",
+};
+const STATUS_PILL_CLASS = {
+  menunggu: "yellow", diproses: "blue", dimasak: "blue", siap_diantar: "blue", diantar: "blue", selesai: "green", dibatalkan: "red",
+};
+const STATUS_FLOW = ["menunggu", "diproses", "dimasak", "siap_diantar", "diantar", "selesai"];
+
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "../index.html"; return; }
+  renderAdminLayout("pesanan", "Kelola Pesanan");
+  hideLoadingScreen();
+  loadOrders();
+
+  let searchDebounce;
+  document.getElementById("filter-search").addEventListener("input", () => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => { currentPage = 1; loadOrders(); }, 400);
+  });
+  document.getElementById("filter-status").addEventListener("change", () => { currentPage = 1; loadOrders(); });
+})();
+
+async function loadOrders() {
+  const tbody = document.getElementById("orders-body");
+  tbody.innerHTML = `<tr><td colspan="8">Memuat...</td></tr>`;
+  try {
+    const params = { page: currentPage, per_page: 15 };
+    const search = document.getElementById("filter-search").value.trim();
+    const status = document.getElementById("filter-status").value;
+    if (search) params.q = search;
+    if (status) params.status = status;
+
+    const result = await AdminApi.listOrders(params);
+    if (!result.items.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-muted text-center">Belum ada pesanan.</td></tr>`;
+      document.getElementById("pagination").innerHTML = "";
+      return;
+    }
+
+    tbody.innerHTML = result.items.map((o) => `
+      <tr>
+        <td class="fw-bold">${o.nomor_pesanan}</td>
+        <td>${formatTanggalSingkat(o.created_at)}</td>
+        <td>${o.nama}</td>
+        <td>${o.whatsapp}</td>
+        <td>${o.jarak_km} km</td>
+        <td>${formatRupiah(o.total)}</td>
+        <td><span class="pill ${STATUS_PILL_CLASS[o.status]}">${STATUS_LABELS[o.status]}</span></td>
+        <td><button class="btn btn-sm btn-outline" onclick="openDetail(${o.id})">Detail</button></td>
+      </tr>
+    `).join("");
+
+    renderPagination(result.page, result.total_pages);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-muted">${err.message}</td></tr>`;
+  }
+}
+
+function renderPagination(page, totalPages) {
+  const el = document.getElementById("pagination");
+  if (totalPages <= 1) { el.innerHTML = ""; return; }
+  let html = `<button ${page <= 1 ? "disabled" : ""} onclick="goPage(${page - 1})">‹</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || Math.abs(i - page) <= 1) {
+      html += `<button class="${i === page ? "active" : ""}" onclick="goPage(${i})">${i}</button>`;
+    } else if (Math.abs(i - page) === 2) {
+      html += `<span style="padding:0 4px">…</span>`;
+    }
+  }
+  html += `<button ${page >= totalPages ? "disabled" : ""} onclick="goPage(${page + 1})">›</button>`;
+  el.innerHTML = html;
+}
+function goPage(p) { currentPage = p; loadOrders(); }
+
+async function openDetail(id) {
+  openModal("modal-detail");
+  document.getElementById("detail-content").innerHTML = `<p class="text-muted">Memuat detail...</p>`;
+
+  try {
+    const data = await AdminApi.getOrder(id);
+    const { pesanan, items, warung } = data;
+    document.getElementById("detail-nomor").textContent = pesanan.nomor_pesanan;
+
+    const nextStatusOptions = STATUS_FLOW.map((s) => `<option value="${s}" ${s === pesanan.status ? "selected" : ""}>${STATUS_LABELS[s]}</option>`).join("");
+
+    document.getElementById("detail-content").innerHTML = `
+      <div class="form-row">
+        <div><p class="text-muted" style="font-size:0.75rem">Nama</p><p class="fw-bold">${pesanan.nama}</p></div>
+        <div><p class="text-muted" style="font-size:0.75rem">WhatsApp</p><p class="fw-bold"><a href="https://wa.me/${pesanan.whatsapp.replace(/\D/g,"")}" target="_blank">${pesanan.whatsapp}</a></p></div>
+      </div>
+      <div class="form-group">
+        <p class="text-muted" style="font-size:0.75rem">Alamat</p>
+        <p>${pesanan.alamat}${pesanan.patokan ? " (Patokan: " + pesanan.patokan + ")" : ""}</p>
+      </div>
+      ${pesanan.catatan ? `<div class="form-group"><p class="text-muted" style="font-size:0.75rem">Catatan</p><p>${pesanan.catatan}</p></div>` : ""}
+
+      <div id="detail-map" style="height:220px;border-radius:10px;margin-bottom:16px"></div>
+      <p class="text-muted mt-2" style="font-size:0.8rem">Jarak: ${pesanan.jarak_km} km | Akurasi GPS: ${pesanan.akurasi_meter ? Math.round(pesanan.akurasi_meter) + " m" : "-"}</p>
+      <a href="https://www.google.com/maps?q=${pesanan.latitude},${pesanan.longitude}" target="_blank" class="btn btn-outline btn-sm mt-2">Buka di Google Maps</a>
+
+      <div class="panel" style="margin:16px 0;padding:14px;background:var(--admin-bg)">
+        ${items.map((i) => `<div class="flex justify-between" style="padding:4px 0;font-size:0.85rem"><span>${i.jumlah}x ${i.nama_produk}</span><span>${formatRupiah(i.subtotal)}</span></div>`).join("")}
+        <div class="flex justify-between fw-bold mt-2" style="border-top:1px solid var(--admin-border);padding-top:8px"><span>Total</span><span>${formatRupiah(pesanan.total)}</span></div>
+      </div>
+
+      <div class="form-group">
+        <label>Update Status Pesanan</label>
+        <select id="select-status" class="form-control">${nextStatusOptions}<option value="dibatalkan" ${pesanan.status === "dibatalkan" ? "selected" : ""}>Dibatalkan</option></select>
+      </div>
+      <div class="form-group" id="alasan-batal-wrap" style="display:none">
+        <label>Alasan Pembatalan</label>
+        <textarea class="form-control" id="alasan-batal" placeholder="Contoh: stok habis, di luar jangkauan, dll."></textarea>
+      </div>
+      <button class="btn btn-primary btn-block" id="btn-update-status">Simpan Status</button>
+    `;
+
+    setTimeout(() => {
+      if (pesanan.latitude && pesanan.longitude) {
+        if (detailMap) { detailMap.remove(); detailMap = null; }
+        detailMap = L.map("detail-map").setView([pesanan.latitude, pesanan.longitude], 14);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "&copy; OpenStreetMap" }).addTo(detailMap);
+        L.marker([pesanan.latitude, pesanan.longitude]).addTo(detailMap).bindPopup("Pelanggan");
+        if (warung && warung.latitude) {
+          const warungIcon = L.divIcon({ html: "🏠", iconSize: [22, 22], className: "" });
+          L.marker([warung.latitude, warung.longitude], { icon: warungIcon }).addTo(detailMap).bindPopup("Warung");
+          L.polyline([[pesanan.latitude, pesanan.longitude], [warung.latitude, warung.longitude]], { color: "#ff6b35", dashArray: "6,6" }).addTo(detailMap);
+          detailMap.fitBounds([[pesanan.latitude, pesanan.longitude], [warung.latitude, warung.longitude]], { padding: [30, 30] });
+        }
+        setTimeout(() => detailMap.invalidateSize(), 200);
+      }
+    }, 100);
+
+    document.getElementById("select-status").addEventListener("change", (e) => {
+      document.getElementById("alasan-batal-wrap").style.display = e.target.value === "dibatalkan" ? "block" : "none";
+    });
+
+    document.getElementById("btn-update-status").addEventListener("click", async () => {
+      const status = document.getElementById("select-status").value;
+      const alasan = document.getElementById("alasan-batal")?.value || "";
+      try {
+        await AdminApi.updateOrderStatus(id, { status, alasan_batal: alasan });
+        showToast("Status pesanan diperbarui.", "success");
+        closeModal("modal-detail");
+        loadOrders();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+  } catch (err) {
+    document.getElementById("detail-content").innerHTML = `<p class="form-error">${err.message}</p>`;
+  }
+}
+</script>
+</body>
+</html>

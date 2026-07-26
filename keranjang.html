@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keranjang</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<header class="site-header">
+  <div class="header-inner">
+    <button onclick="history.back()" class="icon-btn" aria-label="Kembali">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    </button>
+    <span class="fw-bold">Keranjang Saya</span>
+    <span style="width:40px"></span>
+  </div>
+</header>
+
+<section class="section" id="cart-section">
+  <div id="cart-items"></div>
+  <div id="cart-empty" class="empty-state" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+    <p>Keranjang Anda masih kosong.</p>
+    <a href="menu.html" class="btn btn-primary mt-3">Mulai Pesan</a>
+  </div>
+</section>
+
+<div id="cart-summary-bar" class="sticky-bottom-bar" style="display:none">
+  <div class="summary-row"><span>Subtotal (<span id="jumlah-item">0</span> item)</span><strong id="subtotal-value">Rp0</strong></div>
+  <a href="checkout.html" class="btn btn-primary btn-block mt-2">Lanjut ke Checkout</a>
+</div>
+
+<script src="assets/js/api.js"></script>
+<script src="assets/js/cart.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+function renderCart() {
+  const items = Cart.getItems();
+  const listEl = document.getElementById("cart-items");
+  const emptyEl = document.getElementById("cart-empty");
+  const summaryBar = document.getElementById("cart-summary-bar");
+
+  if (!items.length) {
+    listEl.innerHTML = "";
+    emptyEl.style.display = "block";
+    summaryBar.style.display = "none";
+    return;
+  }
+
+  emptyEl.style.display = "none";
+  summaryBar.style.display = "block";
+
+  listEl.innerHTML = items.map((item) => `
+    <div class="cart-item" data-id="${item.produk_id}">
+      <img src="${item.foto_url || "assets/images/produk-placeholder.svg"}" alt="${item.nama}">
+      <div class="cart-item-body">
+        <h4>${item.nama}</h4>
+        <span class="text-muted" style="font-size:0.82rem">${formatRupiah(item.harga)}</span>
+        <div class="qty-control">
+          <button class="btn-qty-minus" data-id="${item.produk_id}">−</button>
+          <span>${item.jumlah}</span>
+          <button class="btn-qty-plus" data-id="${item.produk_id}" data-max="${item.stok || 99}">+</button>
+        </div>
+        <input type="text" class="form-control cart-note-input" data-id="${item.produk_id}" placeholder="Catatan (opsional)" value="${item.catatan || ""}" style="margin-top:8px;padding:6px 10px;font-size:0.78rem">
+        <button class="cart-item-remove" data-id="${item.produk_id}">Hapus</button>
+      </div>
+    </div>
+  `).join("");
+
+  document.getElementById("jumlah-item").textContent = Cart.getTotalItems();
+  document.getElementById("subtotal-value").textContent = formatRupiah(Cart.getSubtotal());
+
+  document.querySelectorAll(".btn-qty-minus").forEach((btn) => btn.addEventListener("click", () => {
+    const id = parseInt(btn.dataset.id);
+    const item = Cart.getItems().find((i) => i.produk_id === id);
+    if (item) Cart.updateQty(id, item.jumlah - 1);
+    renderCart();
+  }));
+  document.querySelectorAll(".btn-qty-plus").forEach((btn) => btn.addEventListener("click", () => {
+    const id = parseInt(btn.dataset.id);
+    const max = parseInt(btn.dataset.max);
+    const item = Cart.getItems().find((i) => i.produk_id === id);
+    if (item) {
+      if (item.jumlah >= max) { showToast(`Stok tersisa hanya ${max}`, "info"); return; }
+      Cart.updateQty(id, item.jumlah + 1);
+    }
+    renderCart();
+  }));
+  document.querySelectorAll(".cart-item-remove").forEach((btn) => btn.addEventListener("click", () => {
+    Cart.removeItem(parseInt(btn.dataset.id));
+    renderCart();
+    showToast("Item dihapus dari keranjang", "info");
+  }));
+  document.querySelectorAll(".cart-note-input").forEach((input) => input.addEventListener("change", () => {
+    Cart.updateNote(parseInt(input.dataset.id), input.value.trim());
+  }));
+}
+
+renderCart();
+</script>
+</body>
+</html>

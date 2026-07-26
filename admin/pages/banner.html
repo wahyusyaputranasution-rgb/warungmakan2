@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Banner | Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Daftar Banner</h3>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Banner</button>
+    </div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Gambar</th><th>Judul</th><th>Urutan</th><th>Status</th><th></th></tr></thead>
+        <tbody id="banner-body"><tr><td colspan="5">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-form">
+  <div class="modal-box">
+    <div class="modal-header"><h3 id="modal-title">Tambah Banner</h3><button class="modal-close" data-close-modal="modal-form">&times;</button></div>
+    <form id="banner-form">
+      <input type="hidden" id="banner-id">
+      <div class="form-group">
+        <label>Gambar Banner *</label>
+        <input type="file" id="banner-foto-input" accept="image/*" class="form-control">
+        <img id="banner-foto-preview" class="img-preview" style="display:none;width:100%;height:120px">
+        <input type="hidden" id="banner-gambar-url">
+      </div>
+      <div class="form-group"><label>Judul</label><input type="text" id="banner-judul" class="form-control" maxlength="150"></div>
+      <div class="form-group"><label>Link Tujuan (opsional)</label><input type="text" id="banner-link" class="form-control" placeholder="menu.html?kategori=promo"></div>
+      <div class="form-group"><label>Urutan Tampil</label><input type="number" id="banner-urutan" class="form-control" value="0"></div>
+      <div class="form-group"><label class="form-check"><input type="checkbox" id="banner-aktif" checked> Tampilkan di website</label></div>
+      <button type="submit" class="btn btn-primary btn-block mt-2" id="btn-save">Simpan</button>
+    </form>
+  </div>
+</div>
+
+<script src="../assets/js/admin-api.js"></script>
+<script src="../assets/js/admin-layout.js"></script>
+<script>
+let uploadedUrl = "";
+
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "../index.html"; return; }
+  renderAdminLayout("banner", "Kelola Banner");
+  hideLoadingScreen();
+  loadBanner();
+})();
+
+async function loadBanner() {
+  const tbody = document.getElementById("banner-body");
+  tbody.innerHTML = `<tr><td colspan="5">Memuat...</td></tr>`;
+  try {
+    const list = await AdminApi.listBanners();
+    if (!list.length) { tbody.innerHTML = `<tr><td colspan="5" class="text-muted text-center">Belum ada banner.</td></tr>`; return; }
+    tbody.innerHTML = list.map((b) => `
+      <tr>
+        <td><img class="thumb" style="width:64px;height:36px;border-radius:6px" src="${b.gambar_url}" alt=""></td>
+        <td class="fw-bold">${b.judul || "-"}</td>
+        <td>${b.urutan}</td>
+        <td><span class="pill ${b.aktif ? "green" : "gray"}">${b.aktif ? "Aktif" : "Nonaktif"}</span></td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-sm btn-outline" onclick='openEditModal(${JSON.stringify(b).replace(/'/g, "&apos;")})'>Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteBanner(${b.id})">Hapus</button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${err.message}</td></tr>`;
+  }
+}
+
+function resetForm() {
+  document.getElementById("banner-form").reset();
+  document.getElementById("banner-id").value = "";
+  document.getElementById("banner-gambar-url").value = "";
+  document.getElementById("banner-foto-preview").style.display = "none";
+  document.getElementById("banner-aktif").checked = true;
+  uploadedUrl = "";
+}
+function openCreateModal() { resetForm(); document.getElementById("modal-title").textContent = "Tambah Banner"; openModal("modal-form"); }
+function openEditModal(b) {
+  resetForm();
+  document.getElementById("modal-title").textContent = "Edit Banner";
+  document.getElementById("banner-id").value = b.id;
+  document.getElementById("banner-judul").value = b.judul || "";
+  document.getElementById("banner-link").value = b.link_url || "";
+  document.getElementById("banner-urutan").value = b.urutan;
+  document.getElementById("banner-aktif").checked = !!b.aktif;
+  document.getElementById("banner-gambar-url").value = b.gambar_url;
+  document.getElementById("banner-foto-preview").src = b.gambar_url;
+  document.getElementById("banner-foto-preview").style.display = "block";
+  uploadedUrl = b.gambar_url;
+  openModal("modal-form");
+}
+
+document.getElementById("banner-foto-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const preview = document.getElementById("banner-foto-preview");
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = "block";
+  try {
+    const result = await AdminApi.uploadImage(file);
+    uploadedUrl = result.url;
+    document.getElementById("banner-gambar-url").value = result.url;
+    showToast("Gambar berhasil diunggah.", "success");
+  } catch (err) {
+    showToast("Gagal unggah gambar: " + err.message, "error");
+  }
+});
+
+document.getElementById("banner-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("banner-id").value;
+  if (!uploadedUrl) { showToast("Silakan unggah gambar banner.", "error"); return; }
+  const payload = {
+    judul: document.getElementById("banner-judul").value.trim(),
+    link_url: document.getElementById("banner-link").value.trim(),
+    urutan: parseInt(document.getElementById("banner-urutan").value) || 0,
+    aktif: document.getElementById("banner-aktif").checked,
+    gambar_url: uploadedUrl,
+  };
+  try {
+    if (id) await AdminApi.updateBanner(id, payload);
+    else await AdminApi.createBanner(payload);
+    showToast("Banner berhasil disimpan.", "success");
+    closeModal("modal-form");
+    loadBanner();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+async function deleteBanner(id) {
+  if (!confirmAction("Yakin ingin menghapus banner ini?")) return;
+  try {
+    await AdminApi.deleteBanner(id);
+    showToast("Banner dihapus.", "success");
+    loadBanner();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+</script>
+</body>
+</html>

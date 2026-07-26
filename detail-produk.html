@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detail Produk</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<header class="site-header">
+  <div class="header-inner">
+    <button onclick="history.back()" class="icon-btn" aria-label="Kembali">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    </button>
+    <span class="fw-bold">Detail Produk</span>
+    <a href="keranjang.html" class="icon-btn" aria-label="Keranjang">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+      <span class="cart-badge" style="display:none">0</span>
+    </a>
+  </div>
+</header>
+
+<div id="produk-detail-content">
+  <div class="skeleton" style="width:100%;aspect-ratio:1/1"></div>
+  <div class="section">
+    <div class="skeleton" style="height:24px;width:70%;margin-bottom:10px"></div>
+    <div class="skeleton" style="height:18px;width:40%"></div>
+  </div>
+</div>
+
+<footer class="site-footer" style="margin-top:0">
+  <p class="footer-bottom">&copy; <span id="tahun-sekarang"></span> <span class="site-nama-warung">Warung Makan</span>. Semua hak cipta dilindungi.</p>
+</footer>
+
+<script src="assets/js/api.js"></script>
+<script src="assets/js/cart.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+document.getElementById("tahun-sekarang").textContent = new Date().getFullYear();
+
+const slug = new URLSearchParams(window.location.search).get("slug");
+
+async function loadDetail() {
+  const container = document.getElementById("produk-detail-content");
+  if (!slug) {
+    container.innerHTML = `<div class="empty-state"><p>Produk tidak ditemukan.</p></div>`;
+    return;
+  }
+  try {
+    const p = await Api.getProductBySlug(slug);
+    document.title = `${p.nama} | Detail Produk`;
+    const diskon = p.harga_coret > p.harga && p.harga_coret > 0;
+    const habis = p.status === "habis" || p.stok <= 0;
+
+    container.innerHTML = `
+      <div class="foto-wrap" style="aspect-ratio:1/1;border-radius:0">
+        <img src="${p.foto_url || "assets/images/produk-placeholder.svg"}" alt="${p.nama}" style="width:100%;height:100%;object-fit:cover">
+      </div>
+      <div class="section">
+        <div class="produk-badges" style="position:static;flex-direction:row;margin-bottom:10px">
+          ${p.best_seller ? `<span class="badge best">Best Seller</span>` : ""}
+          ${p.produk_baru ? `<span class="badge baru">Baru</span>` : ""}
+          ${diskon ? `<span class="badge diskon">-${p.diskon_persen}%</span>` : ""}
+          ${habis ? `<span class="badge habis">Habis</span>` : ""}
+        </div>
+        <h1 style="font-size:1.3rem;font-weight:700;margin-bottom:8px">${p.nama}</h1>
+        <div class="harga-row" style="margin-bottom:12px">
+          <span class="harga-sekarang" style="font-size:1.3rem">${formatRupiah(p.harga)}</span>
+          ${diskon ? `<span class="harga-coret" style="font-size:0.95rem">${formatRupiah(p.harga_coret)}</span>` : ""}
+        </div>
+        <div class="flex gap-3 mt-2" style="flex-wrap:wrap">
+          <span class="produk-meta" style="background:var(--color-bg);padding:6px 12px;border-radius:999px">⏱ ${p.estimasi_masak_menit} menit</span>
+          <span class="produk-meta" style="background:var(--color-bg);padding:6px 12px;border-radius:999px">📦 Stok: ${p.stok}</span>
+          <span class="produk-meta" style="background:var(--color-bg);padding:6px 12px;border-radius:999px">🏷️ ${p.kategori_nama}</span>
+        </div>
+        <h3 style="font-size:0.95rem;margin-top:20px;margin-bottom:8px">Deskripsi</h3>
+        <p class="text-muted" style="font-size:0.88rem;line-height:1.7">${p.deskripsi || "Tidak ada deskripsi untuk produk ini."}</p>
+
+        <div class="form-group mt-4">
+          <label>Catatan untuk penjual (opsional)</label>
+          <textarea class="form-control" id="catatan-produk" placeholder="Contoh: pedas level 2, tanpa bawang, dll."></textarea>
+        </div>
+      </div>
+
+      <div class="sticky-bottom-bar flex items-center gap-3">
+        <div class="qty-control" style="background:var(--color-bg);padding:6px 12px;border-radius:999px">
+          <button id="qty-minus" aria-label="Kurangi">−</button>
+          <span id="qty-value">1</span>
+          <button id="qty-plus" aria-label="Tambah">+</button>
+        </div>
+        <button class="btn btn-primary" style="flex:1" id="btn-tambah-keranjang" ${habis ? "disabled" : ""}>
+          ${habis ? "Stok Habis" : "Tambah ke Keranjang"}
+        </button>
+      </div>
+    `;
+
+    let qty = 1;
+    const maxQty = p.stok;
+    const qtyValueEl = document.getElementById("qty-value");
+    document.getElementById("qty-minus").addEventListener("click", () => {
+      if (qty > 1) { qty--; qtyValueEl.textContent = qty; }
+    });
+    document.getElementById("qty-plus").addEventListener("click", () => {
+      if (qty < maxQty) { qty++; qtyValueEl.textContent = qty; }
+      else showToast(`Stok tersisa hanya ${maxQty}`, "info");
+    });
+
+    const btnTambah = document.getElementById("btn-tambah-keranjang");
+    if (btnTambah && !habis) {
+      btnTambah.addEventListener("click", () => {
+        Cart.addItem(p, qty);
+        const catatan = document.getElementById("catatan-produk").value.trim();
+        if (catatan) Cart.updateNote(p.id, catatan);
+        showToast(`${p.nama} (${qty}x) ditambahkan ke keranjang`, "success");
+      });
+    }
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+  }
+}
+
+loadDetail();
+</script>
+</body>
+</html>

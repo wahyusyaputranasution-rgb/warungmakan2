@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Promo | Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/admin.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<div id="admin-root"></div>
+<div id="admin-page-content-source" style="display:none">
+  <div class="panel">
+    <div class="panel-header">
+      <h3>Daftar Promo</h3>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ Tambah Promo</button>
+    </div>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Gambar</th><th>Judul</th><th>Periode</th><th>Status</th><th></th></tr></thead>
+        <tbody id="promo-body"><tr><td colspan="5">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-form">
+  <div class="modal-box">
+    <div class="modal-header"><h3 id="modal-title">Tambah Promo</h3><button class="modal-close" data-close-modal="modal-form">&times;</button></div>
+    <form id="promo-form">
+      <input type="hidden" id="promo-id">
+      <div class="form-group">
+        <label>Gambar Promo</label>
+        <input type="file" id="promo-foto-input" accept="image/*" class="form-control">
+        <img id="promo-foto-preview" class="img-preview" style="display:none;width:100%;height:120px">
+        <input type="hidden" id="promo-gambar-url">
+      </div>
+      <div class="form-group"><label>Judul *</label><input type="text" id="promo-judul" class="form-control" required maxlength="150"></div>
+      <div class="form-group"><label>Deskripsi</label><textarea id="promo-deskripsi" class="form-control" maxlength="1000"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Tanggal Mulai *</label><input type="date" id="promo-mulai" class="form-control" required></div>
+        <div class="form-group"><label>Tanggal Selesai *</label><input type="date" id="promo-selesai" class="form-control" required></div>
+      </div>
+      <div class="form-group"><label class="form-check"><input type="checkbox" id="promo-aktif" checked> Status Aktif</label></div>
+      <button type="submit" class="btn btn-primary btn-block mt-2" id="btn-save">Simpan</button>
+    </form>
+  </div>
+</div>
+
+<script src="../assets/js/admin-api.js"></script>
+<script src="../assets/js/admin-layout.js"></script>
+<script>
+let uploadedUrl = "";
+
+(async function init() {
+  const ok = await requireAuthGuard();
+  if (!ok) { window.location.href = "../index.html"; return; }
+  renderAdminLayout("promo", "Kelola Promo");
+  hideLoadingScreen();
+  loadPromo();
+})();
+
+async function loadPromo() {
+  const tbody = document.getElementById("promo-body");
+  tbody.innerHTML = `<tr><td colspan="5">Memuat...</td></tr>`;
+  try {
+    const list = await AdminApi.listPromos();
+    if (!list.length) { tbody.innerHTML = `<tr><td colspan="5" class="text-muted text-center">Belum ada promo.</td></tr>`; return; }
+    tbody.innerHTML = list.map((p) => `
+      <tr>
+        <td>${p.gambar_url ? `<img class="thumb" style="width:56px;height:36px;border-radius:6px" src="${p.gambar_url}" alt="">` : "-"}</td>
+        <td class="fw-bold">${p.judul}</td>
+        <td>${p.tanggal_mulai} s/d ${p.tanggal_selesai}</td>
+        <td><span class="pill ${p.status === "aktif" ? "green" : "gray"}">${p.status}</span></td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-sm btn-outline" onclick='openEditModal(${JSON.stringify(p).replace(/'/g, "&apos;")})'>Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deletePromo(${p.id})">Hapus</button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-muted">${err.message}</td></tr>`;
+  }
+}
+
+function resetForm() {
+  document.getElementById("promo-form").reset();
+  document.getElementById("promo-id").value = "";
+  document.getElementById("promo-gambar-url").value = "";
+  document.getElementById("promo-foto-preview").style.display = "none";
+  document.getElementById("promo-aktif").checked = true;
+  uploadedUrl = "";
+}
+function openCreateModal() { resetForm(); document.getElementById("modal-title").textContent = "Tambah Promo"; openModal("modal-form"); }
+function openEditModal(p) {
+  resetForm();
+  document.getElementById("modal-title").textContent = "Edit Promo";
+  document.getElementById("promo-id").value = p.id;
+  document.getElementById("promo-judul").value = p.judul;
+  document.getElementById("promo-deskripsi").value = p.deskripsi || "";
+  document.getElementById("promo-mulai").value = p.tanggal_mulai;
+  document.getElementById("promo-selesai").value = p.tanggal_selesai;
+  document.getElementById("promo-aktif").checked = p.status === "aktif";
+  if (p.gambar_url) {
+    document.getElementById("promo-gambar-url").value = p.gambar_url;
+    document.getElementById("promo-foto-preview").src = p.gambar_url;
+    document.getElementById("promo-foto-preview").style.display = "block";
+    uploadedUrl = p.gambar_url;
+  }
+  openModal("modal-form");
+}
+
+document.getElementById("promo-foto-input").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const preview = document.getElementById("promo-foto-preview");
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = "block";
+  try {
+    const result = await AdminApi.uploadImage(file);
+    uploadedUrl = result.url;
+    document.getElementById("promo-gambar-url").value = result.url;
+    showToast("Gambar berhasil diunggah.", "success");
+  } catch (err) {
+    showToast("Gagal unggah gambar: " + err.message, "error");
+  }
+});
+
+document.getElementById("promo-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("promo-id").value;
+  const payload = {
+    judul: document.getElementById("promo-judul").value.trim(),
+    deskripsi: document.getElementById("promo-deskripsi").value.trim(),
+    tanggal_mulai: document.getElementById("promo-mulai").value,
+    tanggal_selesai: document.getElementById("promo-selesai").value,
+    status: document.getElementById("promo-aktif").checked ? "aktif" : "nonaktif",
+    gambar_url: uploadedUrl,
+  };
+  if (new Date(payload.tanggal_selesai) < new Date(payload.tanggal_mulai)) {
+    showToast("Tanggal selesai harus setelah tanggal mulai.", "error");
+    return;
+  }
+  try {
+    if (id) await AdminApi.updatePromo(id, payload);
+    else await AdminApi.createPromo(payload);
+    showToast("Promo berhasil disimpan.", "success");
+    closeModal("modal-form");
+    loadPromo();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+});
+
+async function deletePromo(id) {
+  if (!confirmAction("Yakin ingin menghapus promo ini?")) return;
+  try {
+    await AdminApi.deletePromo(id);
+    showToast("Promo dihapus.", "success");
+    loadPromo();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+</script>
+</body>
+</html>

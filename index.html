@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home</title>
+<meta name="description" content="Pesan makanan favorit Anda, diantar hangat langsung ke rumah. Bayar COD.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div id="loading-screen"><div class="loader-spinner"></div></div>
+<div id="toast-container"></div>
+
+<!-- ===================== HEADER ===================== -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="brand">
+      <img src="assets/images/logo-placeholder.svg" class="site-logo" alt="Logo">
+      <span class="site-nama-warung">Warung Makan</span>
+    </a>
+    <div class="header-actions">
+      <span class="status-pill status-buka-tutup buka">Buka</span>
+      <button class="icon-btn btn-toggle-theme" aria-label="Ganti tema">
+        <svg class="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <svg class="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+      <a href="keranjang.html" class="icon-btn" aria-label="Keranjang">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+        <span class="cart-badge" style="display:none">0</span>
+      </a>
+    </div>
+  </div>
+  <nav class="main-nav">
+    <a href="index.html">Home</a>
+    <a href="menu.html">Menu</a>
+    <a href="status-pesanan.html">Status Pesanan</a>
+    <a href="tentang.html">Tentang</a>
+    <a href="kontak.html">Kontak</a>
+  </nav>
+</header>
+
+<!-- ===================== BANNER ===================== -->
+<section class="banner-slider" id="banner-slider">
+  <div class="skeleton" style="width:100%;height:100%"></div>
+</section>
+
+<!-- ===================== KATEGORI ===================== -->
+<section class="section">
+  <div class="section-title"><h2>Kategori</h2></div>
+  <div class="kategori-scroll" id="kategori-list">
+    <div class="skeleton" style="width:84px;height:90px"></div>
+    <div class="skeleton" style="width:84px;height:90px"></div>
+    <div class="skeleton" style="width:84px;height:90px"></div>
+  </div>
+</section>
+
+<!-- ===================== PROMO ===================== -->
+<section class="section" id="promo-section" style="display:none">
+  <div class="section-title"><h2>Promo Spesial</h2></div>
+  <div class="promo-scroll" id="promo-list"></div>
+</section>
+
+<!-- ===================== PRODUK POPULER ===================== -->
+<section class="section">
+  <div class="section-title">
+    <h2>Menu Populer</h2>
+    <a href="menu.html?best_seller=1" class="see-all">Lihat semua</a>
+  </div>
+  <div class="produk-grid" id="produk-populer-list">
+    <div class="skeleton" style="aspect-ratio:1/1.4"></div>
+    <div class="skeleton" style="aspect-ratio:1/1.4"></div>
+    <div class="skeleton" style="aspect-ratio:1/1.4"></div>
+    <div class="skeleton" style="aspect-ratio:1/1.4"></div>
+  </div>
+</section>
+
+<!-- ===================== INFO WARUNG ===================== -->
+<section class="section">
+  <div class="info-cards">
+    <div class="info-card">
+      <div class="icon-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <div><h4>Jam Operasional</h4><p id="info-jam-hari-ini">Memuat...</p></div>
+    </div>
+    <div class="info-card">
+      <div class="icon-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+      <div><h4>Alamat</h4><p class="site-alamat">Memuat...</p></div>
+    </div>
+    <div class="info-card">
+      <div class="icon-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21l1.65-3.8a9 9 0 1113.4-13.4l-1.05 1.05"/></svg></div>
+      <div><h4>WhatsApp</h4><p class="site-whatsapp">Memuat...</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== FOOTER ===================== -->
+<footer class="site-footer">
+  <div class="footer-grid">
+    <div class="footer-col">
+      <div class="footer-brand"><img src="assets/images/logo-placeholder.svg" class="site-logo" width="32" height="32" style="border-radius:50%" alt=""><span class="site-nama-warung">Warung Makan</span></div>
+      <p class="site-deskripsi">Memuat...</p>
+      <div class="social-links">
+        <a href="#" class="site-whatsapp-link" target="_blank" aria-label="WhatsApp"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21l1.65-3.8a9 9 0 1113.4-13.4l-1.05 1.05"/></svg></a>
+        <a href="#" class="site-instagram-link" target="_blank" aria-label="Instagram" style="display:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/></svg></a>
+        <a href="#" class="site-facebook-link" target="_blank" aria-label="Facebook" style="display:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h4>Jam Operasional</h4>
+      <div class="jam-operasional-list"><p>Memuat...</p></div>
+    </div>
+    <div class="footer-col">
+      <h4>Tautan</h4>
+      <a href="menu.html">Menu</a>
+      <a href="status-pesanan.html">Lacak Pesanan</a>
+      <a href="tentang.html">Tentang Kami</a>
+      <a href="kontak.html">Kontak</a>
+    </div>
+  </div>
+  <p class="footer-bottom">&copy; <span id="tahun-sekarang"></span> <span class="site-nama-warung">Warung Makan</span>. Semua hak cipta dilindungi.</p>
+</footer>
+
+<!-- ===================== BOTTOM NAV ===================== -->
+<nav class="bottom-nav">
+  <a href="index.html" class="active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Home</a>
+  <a href="menu.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3zM3 10h18v11H3z"/></svg>Menu</a>
+  <a href="keranjang.html" style="position:relative"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>Keranjang<span class="cart-badge" style="display:none">0</span></a>
+  <a href="status-pesanan.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Status</a>
+  <a href="kontak.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>Kontak</a>
+</nav>
+
+<script src="assets/js/api.js"></script>
+<script src="assets/js/cart.js"></script>
+<script src="assets/js/main.js"></script>
+<script>
+document.getElementById("tahun-sekarang").textContent = new Date().getFullYear();
+
+async function loadBanners() {
+  const el = document.getElementById("banner-slider");
+  try {
+    const banners = await Api.getBanners();
+    if (!banners.length) { el.style.display = "none"; return; }
+    el.innerHTML = banners.map((b, i) => `
+      <div class="banner-slide ${i === 0 ? "active" : ""}" data-index="${i}">
+        ${b.link_url ? `<a href="${b.link_url}">` : ""}
+        <img src="${b.gambar_url}" alt="${b.judul || "Banner"}" loading="${i === 0 ? "eager" : "lazy"}">
+        ${b.link_url ? `</a>` : ""}
+      </div>
+    `).join("") + `<div class="banner-dots">${banners.map((_, i) => `<span class="${i === 0 ? "active" : ""}"></span>`).join("")}</div>`;
+
+    if (banners.length > 1) {
+      let current = 0;
+      setInterval(() => {
+        const slides = el.querySelectorAll(".banner-slide");
+        const dots = el.querySelectorAll(".banner-dots span");
+        slides[current].classList.remove("active");
+        dots[current].classList.remove("active");
+        current = (current + 1) % slides.length;
+        slides[current].classList.add("active");
+        dots[current].classList.add("active");
+      }, 4000);
+    }
+  } catch (err) {
+    el.style.display = "none";
+  }
+}
+
+async function loadKategori() {
+  const el = document.getElementById("kategori-list");
+  try {
+    const kategori = await Api.getCategories();
+    if (!kategori.length) { el.innerHTML = `<p class="text-muted">Belum ada kategori.</p>`; return; }
+    el.innerHTML = kategori.map((k) => `
+      <a href="menu.html?kategori=${k.slug}" class="kategori-item">
+        <div class="icon-circle"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></div>
+        <span>${k.nama}</span>
+      </a>
+    `).join("");
+  } catch (err) {
+    el.innerHTML = `<p class="text-muted">Gagal memuat kategori.</p>`;
+  }
+}
+
+async function loadPromo() {
+  const section = document.getElementById("promo-section");
+  const el = document.getElementById("promo-list");
+  try {
+    const promos = await Api.getPromos();
+    if (!promos.length) return;
+    section.style.display = "block";
+    el.innerHTML = promos.map((p) => `
+      <div class="promo-card">
+        ${p.gambar_url ? `<img src="${p.gambar_url}" alt="${p.judul}" loading="lazy">` : ""}
+        <div class="promo-body"><h4>${p.judul}</h4><p>${p.deskripsi || ""}</p></div>
+      </div>
+    `).join("");
+  } catch (err) { /* diamkan jika gagal */ }
+}
+
+function renderProdukCard(p) {
+  const diskon = p.harga_coret > p.harga && p.harga_coret > 0;
+  const habis = p.status === "habis" || p.stok <= 0;
+  return `
+    <div class="produk-card">
+      <a href="detail-produk.html?slug=${p.slug}">
+        <div class="foto-wrap">
+          <img src="${p.foto_url || "assets/images/produk-placeholder.svg"}" alt="${p.nama}" loading="lazy">
+          <div class="produk-badges">
+            ${p.best_seller ? `<span class="badge best">Best Seller</span>` : ""}
+            ${p.produk_baru ? `<span class="badge baru">Baru</span>` : ""}
+            ${diskon ? `<span class="badge diskon">-${p.diskon_persen}%</span>` : ""}
+            ${habis ? `<span class="badge habis">Habis</span>` : ""}
+          </div>
+        </div>
+        <div class="produk-info">
+          <h3>${p.nama}</h3>
+          <div class="harga-row">
+            <span class="harga-sekarang">${formatRupiah(p.harga)}</span>
+            ${diskon ? `<span class="harga-coret">${formatRupiah(p.harga_coret)}</span>` : ""}
+          </div>
+          <div class="produk-meta">⏱ ${p.estimasi_masak_menit} menit</div>
+        </div>
+      </a>
+      <button class="btn-add-cart" data-id="${p.id}" ${habis ? "disabled" : ""} aria-label="Tambah ke keranjang">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+  `;
+}
+
+async function loadProdukPopuler() {
+  const el = document.getElementById("produk-populer-list");
+  try {
+    const produk = await Api.getProducts({ best_seller: 1, limit: 8 });
+    if (!produk.length) { el.innerHTML = `<p class="text-muted">Belum ada produk.</p>`; return; }
+    el.innerHTML = produk.map(renderProdukCard).join("");
+    attachAddToCartHandlers(produk);
+  } catch (err) {
+    el.innerHTML = `<p class="text-muted">Gagal memuat produk.</p>`;
+  }
+}
+
+function attachAddToCartHandlers(produkList) {
+  document.querySelectorAll(".btn-add-cart").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const id = parseInt(btn.dataset.id);
+      const produk = produkList.find((p) => p.id === id);
+      if (!produk) return;
+      Cart.addItem(produk, 1);
+      showToast(`${produk.nama} ditambahkan ke keranjang`, "success");
+    });
+  });
+}
+
+async function loadJamHariIni() {
+  const el = document.getElementById("info-jam-hari-ini");
+  try {
+    const hours = await Api.getOperatingHours();
+    const today = new Date().getDay();
+    const jamHariIni = hours.find((h) => h.hari === today);
+    el.textContent = jamHariIni ? (jamHariIni.libur ? "Libur hari ini" : `${jamHariIni.jam_buka} - ${jamHariIni.jam_tutup} WIB`) : "-";
+  } catch (err) {
+    el.textContent = "-";
+  }
+}
+
+loadBanners();
+loadKategori();
+loadPromo();
+loadProdukPopuler();
+loadJamHariIni();
+</script>
+</body>
+</html>

@@ -28,17 +28,7 @@ binding = "DB"
 database_name = "warung_makan_db"
 database_id = "ISI_DENGAN_DATABASE_ID_ANDA"
 
-# ==========================================================
-# R2 BUCKET BINDING (untuk upload foto produk/banner/promo)
-# ==========================================================
-# Buat bucket dengan:
-#   wrangler r2 bucket create warung-makan-images
-# Jika R2 tidak tersedia di akun Anda (misalnya paket free tanpa R2 aktif),
-# Worker otomatis fallback menyimpan gambar sebagai Base64 — hapus saja
-# blok [[r2_buckets]] di bawah ini dan sistem tetap berjalan normal.
-[[r2_buckets]]
-binding = "IMAGES"
-bucket_name = "warung-makan-images"
+
 
 # ==========================================================
 # ENVIRONMENT VARIABLES

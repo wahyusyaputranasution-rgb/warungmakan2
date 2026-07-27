@@ -3,7 +3,7 @@
 // ==========================================================
 // WAJIB DIISI setelah Worker di-deploy (lihat README.md langkah 4-5).
 // Harus sama persis dengan API_BASE_URL di assets/js/api.js.
-const ADMIN_API_BASE = "https://warung-makan-api.YOUR-SUBDOMAIN.workers.dev";
+const ADMIN_API_BASE = "https://warungmakan2.videoviralterbaruuu.workers.dev";
 const TOKEN_KEY = "warungmakan_admin_token";
 const ADMIN_INFO_KEY = "warungmakan_admin_info";
 

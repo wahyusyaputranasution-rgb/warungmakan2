@@ -25,8 +25,8 @@ compatibility_date = "2024-09-23"
 # Salin "database_id" yang muncul pada output ke bawah ini.
 [[d1_databases]]
 binding = "DB"
-database_name = "warung_makan_db"
-database_id = "ISI_DENGAN_DATABASE_ID_ANDA"
+database_name = "warungmakandb"
+database_id = "139f9932-b9b2-44d0-8d2f-6c6b57178b61"
 
 
 

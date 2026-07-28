@@ -6,7 +6,7 @@
 // Contoh: "https://warung-makan-api.namaanda.workers.dev"
 // Worker dan Pages adalah dua deployment terpisah, sehingga URL lengkap
 // (bukan path relatif kosong) diperlukan agar frontend bisa memanggil API.
-const API_BASE_URL = "https://warung-makan-api.YOUR-SUBDOMAIN.workers.dev";
+const API_BASE_URL = "https://warungmakan2.videoviralterbaruuu.workers.dev";
 
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;

@@ -13,38 +13,31 @@
 #
 # Lihat README.md untuk langkah lengkap.
 
-name = "warung-makan-api"
+name = "warungmakan2"
 main = "api/worker.js"
 compatibility_date = "2024-09-23"
 
 # ==========================================================
 # D1 DATABASE BINDING
 # ==========================================================
-# Buat database dengan:
-#   wrangler d1 create warung_makan_db
-# Salin "database_id" yang muncul pada output ke bawah ini.
 [[d1_databases]]
 binding = "DB"
-database_name = "warung_makan_db"
-database_id = "ISI_DENGAN_DATABASE_ID_ANDA"
+database_name = "warungmakandb"
+database_id = "139f9932-b9b2-44d0-8d2f-6c6b57178b61"
 
 # ==========================================================
-# R2 BUCKET BINDING (untuk upload foto produk/banner/promo)
+# R2 DINONAKTIFKAN
 # ==========================================================
-# Buat bucket dengan:
-#   wrangler r2 bucket create warung-makan-images
-# Jika R2 tidak tersedia di akun Anda (misalnya paket free tanpa R2 aktif),
-# Worker otomatis fallback menyimpan gambar sebagai Base64 — hapus saja
-# blok [[r2_buckets]] di bawah ini dan sistem tetap berjalan normal.
-[[r2_buckets]]
-binding = "IMAGES"
-bucket_name = "warung-makan-images"
+# R2 tidak aktif di akun ini — upload gambar otomatis fallback ke
+# Base64 tersimpan langsung di database. Jangan aktifkan blok
+# [[r2_buckets]] lagi kecuali R2 sudah diaktifkan di dashboard Cloudflare.
 
 # ==========================================================
 # ENVIRONMENT VARIABLES
 # ==========================================================
 [vars]
-# WAJIB DIGANTI sebelum deploy produksi — gunakan string acak yang panjang.
-# Contoh membuat secret acak: openssl rand -hex 32
+# CATATAN: kalau Anda sudah mengganti JWT_SECRET dengan nilai rahasia asli
+# di GitHub, JANGAN timpa baris ini dengan versi contoh di bawah —
+# edit manual baris JWT_SECRET saja, jangan copy seluruh file ini mentah-mentah.
 JWT_SECRET = "ganti_dengan_secret_key_yang_sangat_rahasia_dan_panjang_123456"
 APP_ENV = "production"

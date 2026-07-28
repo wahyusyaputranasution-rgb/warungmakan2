@@ -158,3 +158,10 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("load", hideLoadingScreen);
   setTimeout(hideLoadingScreen, 2000); // fallback jika event load lambat
 });
+
+// ---------------- REGISTRASI SERVICE WORKER (PWA) ----------------
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}

@@ -64,6 +64,7 @@ const AdminApi = {
   dashboard: () => adminApiRequest("/api/admin/dashboard"),
 
   listOrders: (params = {}) => adminApiRequest(`/api/admin/orders?${new URLSearchParams(params)}`),
+  checkNewOrders: (sinceId) => adminApiRequest(`/api/admin/orders/notifications?since_id=${sinceId}`),
   getOrder: (id) => adminApiRequest(`/api/admin/orders/${id}`),
   updateOrderStatus: (id, payload) => adminApiRequest(`/api/admin/orders/${id}/status`, { method: "PUT", body: JSON.stringify(payload) }),
 

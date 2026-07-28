@@ -57,7 +57,8 @@ function renderAdminLayout(activePage, pageTitle) {
   const sidebarLinks = MENU_ITEMS.map((item) => {
     if (item.section) return `<div class="sidebar-section-label">${item.section}</div>`;
     const isActive = item.page === activePage;
-    return `<a href="${basePath}${item.href}" class="${isActive ? "active" : ""}">${svgIcon(item.icon)}<span>${item.label}</span></a>`;
+    const badge = item.page === "pesanan" ? `<span class="sidebar-badge" id="sidebar-badge-pesanan" style="display:none">0</span>` : "";
+    return `<a href="${basePath}${item.href}" class="${isActive ? "active" : ""}">${svgIcon(item.icon)}<span>${item.label}</span>${badge}</a>`;
   }).join("");
 
   const sidebarHtml = `
@@ -81,6 +82,10 @@ function renderAdminLayout(activePage, pageTitle) {
         <span class="topbar-title">${pageTitle}</span>
       </div>
       <div class="topbar-actions">
+        <button class="icon-btn" id="btn-notif-bell" title="Aktifkan notifikasi pesanan baru" style="position:relative">
+          ${svgIcon("bell")}
+          <span class="notif-dot" id="notif-dot" style="display:none"></span>
+        </button>
         <button class="icon-btn btn-toggle-theme">
           <span class="theme-icon-moon">${svgIcon("moon")}</span>
           <span class="theme-icon-sun" style="display:none">${svgIcon("sun")}</span>
@@ -123,6 +128,20 @@ function renderAdminLayout(activePage, pageTitle) {
     document.getElementById("sidebar-overlay").classList.remove("show");
   });
   document.querySelector(".btn-toggle-theme")?.addEventListener("click", toggleDarkMode);
+  document.getElementById("btn-notif-bell")?.addEventListener("click", handleNotifBellClick);
+
+  updateNotifBellIcon();
+  updateSidebarBadge();
+  if (activePage === "pesanan") {
+    // Kunjungan ke halaman Pesanan dianggap sudah "melihat" semua pesanan sejauh ini
+    markOrdersAsSeen();
+  }
+  startOrderNotificationPolling();
+
+  // Registrasi service worker (PWA) untuk dashboard admin
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/admin/sw.js", { scope: "/admin/" }).catch(() => {});
+  }
 }
 
 async function handleLogout() {
@@ -202,6 +221,142 @@ function confirmAction(message) {
 function hideLoadingScreen() {
   const el = document.getElementById("loading-screen");
   if (el) setTimeout(() => el.classList.add("hidden"), 200);
+}
+
+// ==========================================================
+// NOTIFIKASI PESANAN BARU
+// ==========================================================
+const LAST_ORDER_ID_KEY = "warungmakan_last_order_id";
+const UNSEEN_ORDER_COUNT_KEY = "warungmakan_unseen_order_count";
+const NOTIF_POLL_INTERVAL_MS = 20000; // cek tiap 20 detik
+let notifPollTimer = null;
+
+function getLastOrderId() { return parseInt(localStorage.getItem(LAST_ORDER_ID_KEY) || "0", 10); }
+function setLastOrderId(id) { localStorage.setItem(LAST_ORDER_ID_KEY, String(id)); }
+function getUnseenCount() { return parseInt(localStorage.getItem(UNSEEN_ORDER_COUNT_KEY) || "0", 10); }
+function setUnseenCount(n) { localStorage.setItem(UNSEEN_ORDER_COUNT_KEY, String(n)); }
+
+function markOrdersAsSeen() {
+  setUnseenCount(0);
+  updateSidebarBadge();
+}
+
+function updateSidebarBadge() {
+  const badge = document.getElementById("sidebar-badge-pesanan");
+  if (!badge) return;
+  const count = getUnseenCount();
+  if (count > 0) {
+    badge.textContent = count > 99 ? "99+" : String(count);
+    badge.style.display = "inline-flex";
+  } else {
+    badge.style.display = "none";
+  }
+  document.title = count > 0 ? `(${count}) Pesanan Baru` : document.title.replace(/^\(\d+\)\s*/, "");
+}
+
+function updateNotifBellIcon() {
+  const dot = document.getElementById("notif-dot");
+  if (!dot) return;
+  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    dot.style.display = "block";
+    dot.style.background = "var(--admin-success)";
+  } else {
+    dot.style.display = "block";
+    dot.style.background = "var(--admin-text-muted)";
+  }
+}
+
+async function handleNotifBellClick() {
+  if (typeof Notification === "undefined") {
+    showToast("Browser ini tidak mendukung notifikasi.", "info");
+    return;
+  }
+  if (Notification.permission === "granted") {
+    showToast("Notifikasi pesanan baru sudah aktif.", "success");
+    return;
+  }
+  if (Notification.permission === "denied") {
+    showToast("Notifikasi diblokir. Aktifkan lewat pengaturan izin browser untuk situs ini.", "error", 5000);
+    return;
+  }
+  const result = await Notification.requestPermission();
+  updateNotifBellIcon();
+  if (result === "granted") {
+    showToast("Notifikasi pesanan baru diaktifkan.", "success");
+    new Notification("Notifikasi Aktif", { body: "Anda akan diberi tahu setiap ada pesanan baru masuk." });
+  } else {
+    showToast("Izin notifikasi tidak diberikan.", "info");
+  }
+}
+
+// Bunyi "ting" sederhana via Web Audio API — tidak perlu file suara eksternal
+function playNotificationSound() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    [880, 1320].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, now + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.25, now + i * 0.15 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.15 + 0.3);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + i * 0.15);
+      osc.stop(now + i * 0.15 + 0.32);
+    });
+    setTimeout(() => ctx.close(), 800);
+  } catch (err) { /* abaikan jika audio tidak didukung */ }
+}
+
+async function checkForNewOrders() {
+  try {
+    const lastId = getLastOrderId();
+    const result = await AdminApi.checkNewOrders(lastId);
+
+    if (lastId === 0) {
+      // Kunjungan pertama kali: jangan notifikasi untuk histori lama, cukup catat baseline
+      setLastOrderId(result.latest_id);
+      return;
+    }
+
+    if (result.new_orders && result.new_orders.length > 0) {
+      playNotificationSound();
+      setUnseenCount(getUnseenCount() + result.new_orders.length);
+      updateSidebarBadge();
+
+      const first = result.new_orders[0];
+      const pesan = result.new_orders.length === 1
+        ? `${first.nomor_pesanan} - ${first.nama} - ${formatRupiah(first.total)}`
+        : `${result.new_orders.length} pesanan baru masuk`;
+
+      showToast(`🔔 Pesanan baru! ${pesan}`, "success", 6000);
+
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        const notif = new Notification("Pesanan Baru Masuk!", {
+          body: pesan,
+          icon: "/assets/images/icon-192.png",
+          tag: "pesanan-baru",
+        });
+        notif.onclick = () => {
+          window.focus();
+          window.location.href = getAdminBasePath() + "pages/pesanan.html";
+        };
+      }
+
+      setLastOrderId(result.latest_id);
+    }
+  } catch (err) {
+    // Diamkan saja saat polling gagal (mis. koneksi terputus sesaat) agar tidak mengganggu
+  }
+}
+
+function startOrderNotificationPolling() {
+  if (notifPollTimer) clearInterval(notifPollTimer);
+  checkForNewOrders();
+  notifPollTimer = setInterval(checkForNewOrders, NOTIF_POLL_INTERVAL_MS);
 }
 
 document.addEventListener("DOMContentLoaded", () => {

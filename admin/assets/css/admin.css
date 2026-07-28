@@ -205,3 +205,29 @@ textarea.form-control { resize: vertical; min-height: 70px; }
 .flex { display: flex; } .items-center { align-items: center; } .justify-between { justify-content: space-between; }
 .gap-2 { gap: 8px; } .gap-3 { gap: 12px; }
 .fw-bold { font-weight: 700; }
+
+/* ---------------- NOTIFIKASI (badge sidebar & lonceng topbar) ---------------- */
+.sidebar-badge {
+  margin-left: auto;
+  background: var(--admin-danger);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+}
+.sidebar-nav a { justify-content: flex-start; }
+.notif-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--admin-surface);
+}

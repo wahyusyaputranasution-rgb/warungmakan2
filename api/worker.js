@@ -85,6 +85,8 @@ export default {
       // ============ ADMIN: PESANAN ============
       else if (path === "/api/admin/orders" && method === "GET") {
         response = await withAuth(request, env, (env, req) => adminListOrders(env, url));
+      } else if (path === "/api/admin/orders/notifications" && method === "GET") {
+        response = await withAuth(request, env, () => adminCheckNewOrders(env, url));
       } else if (path.match(/^\/api\/admin\/orders\/\d+$/) && method === "GET") {
         const id = toInt(path.split("/").pop());
         response = await withAuth(request, env, () => adminGetOrder(env, id));
@@ -755,6 +757,23 @@ async function adminListOrders(env, url) {
     page,
     per_page: perPage,
     total_pages: Math.ceil(countResult.total / perPage),
+  });
+}
+
+// Dipakai dashboard admin untuk polling pesanan baru (notifikasi).
+// Mengembalikan pesanan dengan id lebih besar dari `since_id`, plus id tertinggi saat ini.
+async function adminCheckNewOrders(env, url) {
+  const sinceId = toInt(url.searchParams.get("since_id"), 0);
+
+  const { results } = await env.DB.prepare(
+    "SELECT id, nomor_pesanan, nama, total, created_at FROM pesanan WHERE id > ? ORDER BY id ASC LIMIT 20"
+  ).bind(sinceId).all();
+
+  const latestRow = await env.DB.prepare("SELECT MAX(id) as max_id FROM pesanan").first();
+
+  return successResponse({
+    new_orders: results,
+    latest_id: latestRow?.max_id || 0,
   });
 }
 

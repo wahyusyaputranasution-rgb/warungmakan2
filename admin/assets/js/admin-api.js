@@ -114,12 +114,67 @@ const AdminApi = {
   deleteAdmin: (id) => adminApiRequest(`/api/admin/admins/${id}`, { method: "DELETE" }),
   changePassword: (payload) => adminApiRequest("/api/admin/change-password", { method: "PUT", body: JSON.stringify(payload) }),
 
-  uploadImage: (file) => {
+  uploadImage: async (file) => {
+    const compressed = await compressImageFile(file);
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", compressed);
     return adminApiRequest("/api/admin/upload", { method: "POST", body: formData });
   },
 };
+
+// ---------------- KOMPRESI GAMBAR SEBELUM UPLOAD ----------------
+// Foto dari HP biasanya berukuran beberapa MB (misal 12MP), yang bisa
+// menyebabkan Worker melebihi batas CPU time saat fallback ke Base64
+// (karena tidak ada R2). Fungsi ini mengecilkan gambar ke maksimal
+// 900px pada sisi terpanjang dan mengompresnya sebagai JPEG kualitas 75%
+// sebelum dikirim ke server — jauh lebih ringan dan cepat.
+function compressImageFile(file, maxDimension = 900, quality = 0.75) {
+  return new Promise((resolve) => {
+    // GIF tidak dikompres agar animasi tidak rusak
+    if (!file.type.startsWith("image/") || file.type === "image/gif") {
+      resolve(file);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round(height * (maxDimension / width));
+            width = maxDimension;
+          } else {
+            width = Math.round(width * (maxDimension / height));
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) { resolve(file); return; }
+            const compressedFile = new File(
+              [blob],
+              file.name.replace(/\.[^.]+$/, "") + ".jpg",
+              { type: "image/jpeg" }
+            );
+            resolve(compressedFile);
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
 
 // ---------------- FORMAT HELPERS ----------------
 function formatRupiah(angka) {

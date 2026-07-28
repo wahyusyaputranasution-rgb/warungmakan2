@@ -908,7 +908,7 @@ async function adminCreateProduct(request, env) {
   if (kategoriId <= 0) return errorResponse("Kategori wajib dipilih.", 400);
 
   const slug = slugify(body.slug || nama) + "-" + Math.random().toString(36).substring(2, 6);
-  const fotoUrl = sanitizeString(body.foto_url || "", 500);
+  const fotoUrl = sanitizeString(body.foto_url || "", 6000000);
   const harga = toInt(body.harga, 0);
   const hargaCoret = toInt(body.harga_coret, 0);
   const diskonPersen = toInt(body.diskon_persen, 0);
@@ -934,7 +934,7 @@ async function adminUpdateProduct(request, env, id) {
 
   const nama = sanitizeString(body.nama, 150) || existing.nama;
   const kategoriId = body.kategori_id !== undefined ? toInt(body.kategori_id, existing.kategori_id) : existing.kategori_id;
-  const fotoUrl = body.foto_url !== undefined ? sanitizeString(body.foto_url, 500) : existing.foto_url;
+  const fotoUrl = body.foto_url !== undefined ? sanitizeString(body.foto_url, 6000000) : existing.foto_url;
   const harga = body.harga !== undefined ? toInt(body.harga, existing.harga) : existing.harga;
   const hargaCoret = body.harga_coret !== undefined ? toInt(body.harga_coret, existing.harga_coret) : existing.harga_coret;
   const diskonPersen = body.diskon_persen !== undefined ? toInt(body.diskon_persen, existing.diskon_persen) : existing.diskon_persen;
@@ -974,7 +974,7 @@ async function adminListBanners(env) {
 
 async function adminCreateBanner(request, env) {
   const body = await safeJson(request);
-  const gambarUrl = sanitizeString(body.gambar_url, 500);
+  const gambarUrl = sanitizeString(body.gambar_url, 6000000);
   if (!gambarUrl) return errorResponse("Gambar banner wajib diisi.", 400);
 
   const judul = sanitizeString(body.judul || "", 150);
@@ -995,7 +995,7 @@ async function adminUpdateBanner(request, env, id) {
   if (!existing) return errorResponse("Banner tidak ditemukan.", 404);
 
   const judul = body.judul !== undefined ? sanitizeString(body.judul, 150) : existing.judul;
-  const gambarUrl = body.gambar_url !== undefined ? sanitizeString(body.gambar_url, 500) : existing.gambar_url;
+  const gambarUrl = body.gambar_url !== undefined ? sanitizeString(body.gambar_url, 6000000) : existing.gambar_url;
   const linkUrl = body.link_url !== undefined ? sanitizeString(body.link_url, 500) : existing.link_url;
   const urutan = body.urutan !== undefined ? toInt(body.urutan, existing.urutan) : existing.urutan;
   const aktif = body.aktif !== undefined ? (body.aktif ? 1 : 0) : existing.aktif;
@@ -1025,7 +1025,7 @@ async function adminCreatePromo(request, env) {
   if (!judul) return errorResponse("Judul promo wajib diisi.", 400);
 
   const deskripsi = sanitizeString(body.deskripsi || "", 1000);
-  const gambarUrl = sanitizeString(body.gambar_url || "", 500);
+  const gambarUrl = sanitizeString(body.gambar_url || "", 6000000);
   const tanggalMulai = sanitizeString(body.tanggal_mulai, 20);
   const tanggalSelesai = sanitizeString(body.tanggal_selesai, 20);
   const status = body.status === "nonaktif" ? "nonaktif" : "aktif";
@@ -1046,7 +1046,7 @@ async function adminUpdatePromo(request, env, id) {
 
   const judul = body.judul !== undefined ? sanitizeString(body.judul, 150) : existing.judul;
   const deskripsi = body.deskripsi !== undefined ? sanitizeString(body.deskripsi, 1000) : existing.deskripsi;
-  const gambarUrl = body.gambar_url !== undefined ? sanitizeString(body.gambar_url, 500) : existing.gambar_url;
+  const gambarUrl = body.gambar_url !== undefined ? sanitizeString(body.gambar_url, 6000000) : existing.gambar_url;
   const tanggalMulai = body.tanggal_mulai !== undefined ? sanitizeString(body.tanggal_mulai, 20) : existing.tanggal_mulai;
   const tanggalSelesai = body.tanggal_selesai !== undefined ? sanitizeString(body.tanggal_selesai, 20) : existing.tanggal_selesai;
   const status = body.status !== undefined ? (body.status === "nonaktif" ? "nonaktif" : "aktif") : existing.status;
@@ -1286,8 +1286,8 @@ async function adminUpdateSettings(request, env) {
   const existing = await env.DB.prepare("SELECT * FROM pengaturan WHERE id = 1").first();
 
   const namaWarung = body.nama_warung !== undefined ? sanitizeString(body.nama_warung, 150) : existing.nama_warung;
-  const logoUrl = body.logo_url !== undefined ? sanitizeString(body.logo_url, 500) : existing.logo_url;
-  const faviconUrl = body.favicon_url !== undefined ? sanitizeString(body.favicon_url, 500) : existing.favicon_url;
+  const logoUrl = body.logo_url !== undefined ? sanitizeString(body.logo_url, 6000000) : existing.logo_url;
+  const faviconUrl = body.favicon_url !== undefined ? sanitizeString(body.favicon_url, 6000000) : existing.favicon_url;
   const alamat = body.alamat !== undefined ? sanitizeString(body.alamat, 500) : existing.alamat;
   const whatsapp = body.whatsapp !== undefined ? sanitizeString(body.whatsapp, 20) : existing.whatsapp;
   const instagram = body.instagram !== undefined ? sanitizeString(body.instagram, 100) : existing.instagram;

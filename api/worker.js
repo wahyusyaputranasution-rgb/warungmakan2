@@ -1461,8 +1461,12 @@ async function adminUploadImage(request, env) {
   // ---- Fallback: simpan sebagai Base64 langsung di respons (disimpan oleh client di field foto_url) ----
   const arrayBuffer = await file.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
+  // Konversi per-chunk (bukan per-karakter) agar tidak melebihi batas CPU time Worker
+  const CHUNK_SIZE = 8192;
   let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK_SIZE));
+  }
   const base64 = btoa(binary);
   const dataUrl = `data:${file.type};base64,${base64}`;
 

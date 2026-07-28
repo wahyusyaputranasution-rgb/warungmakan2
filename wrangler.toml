@@ -13,7 +13,7 @@
 #
 # Lihat README.md untuk langkah lengkap.
 
-name = "warung-makan-api"
+name = "warungmakan2"
 main = "api/worker.js"
 compatibility_date = "2024-09-23"
 
